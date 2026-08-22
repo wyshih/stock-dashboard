@@ -29,14 +29,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
 from frontend.pattern_base import Pattern
-
-DATA_DIR = Path(__file__).resolve().parents[1] / "public_data"
+from paths import DATA_DIR
 
 HOLD_DAYS = (5, 20)
 MIN_SAMPLES = 30

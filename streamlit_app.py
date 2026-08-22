@@ -17,7 +17,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pandas as pd
 import streamlit as st
@@ -29,8 +28,7 @@ from frontend import verdict as verdict_mod
 from frontend.levels import Level, classify, cluster
 from frontend.pattern_base import TONE_ICON, TONE_NAME
 from frontend.patterns import PATTERNS_BY_KEY
-
-DATA_DIR = Path(__file__).resolve().parent / "public_data"
+from paths import DATA_DIR
 
 st.set_page_config(page_title="台股預測系統（測試期展示）", page_icon="📈", layout="wide")
 
