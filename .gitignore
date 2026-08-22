@@ -1,0 +1,43 @@
+# 環境變數（這個 repo 其實不需要任何 secret，這條是保險）
+.env
+.env.*
+
+# ⚠️ 絕對不可以進這個 public repo 的東西
+*.pkl
+features.parquet
+features_v3.parquet
+*_features.parquet
+labels*.parquet
+price.parquet
+price_official*.parquet
+BACKTEST_LOG.md
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# 虛擬環境
+.venv/
+venv/
+env/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 暫存
+*.tmp
+*.log
+*.bak
