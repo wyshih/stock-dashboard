@@ -382,7 +382,7 @@ def page_about() -> None:
 ### 這是什麼
 
 一個台股的「未來 20 個交易日會不會漲過半數天數」預測模型的**測試期成績單**。
-10 個模型全部是 RandomForest，差別只在特徵集與 ground truth 的定義。
+5 個模型全部是 RandomForest，差別只在特徵集與 ground truth 的定義。
 
 - 期間：**{period.get('start', '?')} ~ {period.get('end', '?')}**
   （{period.get('trading_days', '?')} 個交易日）
@@ -397,7 +397,7 @@ def page_about() -> None:
 兩個切分交界各留**一個月 embargo** —— ground truth 要看未來 20 個交易日，
 交界緊貼的話訓練期末端的答案會落在驗證期裡，等於偷看。
 
-### 10 個模型
+### 5 個模型
 """)
     models = manifest.get("models", [])
     if models:

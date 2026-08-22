@@ -1,6 +1,12 @@
 .DEFAULT_GOAL := help
 SHELL := /bin/bash
-PY   := .venv/bin/python
+# 直譯器解析順序：本 repo 的 venv → engine 的 venv → 系統 python3。
+# 中間那層是為了 engine 的 `make export-public` —— 它匯出完會來跑這裡的
+# 安全檢查（public_data/ 有資料時那幾條才驗得到），但 dashboard 未必裝過
+# 自己的 venv，寫死 .venv 會讓整條匯出流程斷在這裡。
+PY := $(shell test -x .venv/bin/python && echo .venv/bin/python \
+        || (test -x ../engine/.venv/bin/python && echo ../engine/.venv/bin/python) \
+        || echo python3)
 PORT ?= 8501
 
 .PHONY: help install app test

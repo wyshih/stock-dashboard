@@ -18,13 +18,13 @@
 | 檔案 | 是什麼 |
 |---|---|
 | `price_test.parquet` | 測試期（2025-02-01 ~ 2026-07-31）全市場 OHLCV |
-| `scores_test.parquet` | 10 個模型 × 該期間每日每股的分數 |
+| `scores_test.parquet` | 5 個模型 × 該期間每日每股的分數 |
 | `pattern_hits.parquet` | 148 條說法的命中矩陣（int8） |
 | `pattern_stats.json` | 148 條說法的**全市場全歷史**條件統計 + 對照組 |
 | `sigcurve_m*.csv` | 各模型 val_sel 門檻曲線（滑桿旁的數字讀這個） |
 | `backtest_summary.csv` | 絕對門檻版 + 訊號數對齊版兩張表 |
 | `stock_list.parquet` | 代號 / 名稱 / 市場 / 產業 |
-| `manifest.json` | 期間、10 個模型與門檻、產生時間、資料口徑、免責聲明 |
+| `manifest.json` | 期間、5 個模型與門檻、產生時間、資料口徑、免責聲明 |
 
 `frontend/` 底下的 `indicators.py` / `levels.py` / `technical_chart.py` /
 `pattern_base.py` / `patterns.py` / `patterns_talib.py` / `patterns_chip.py` /
