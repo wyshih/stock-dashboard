@@ -45,8 +45,9 @@ def load_manifest() -> dict:
 
 
 @st.cache_data(ttl=3600)
-def load_scores() -> pd.DataFrame:
-    path = DATA_DIR / "scores_test.parquet"
+def load_scores(model_key: str) -> pd.DataFrame:
+    """單一模型的分數 —— 資料包一個模型一個檔，不用把五個模型全讀進來。"""
+    path = DATA_DIR / f"scores_test_{model_key}.parquet"
     if not path.exists():
         return pd.DataFrame()
     frame = pd.read_parquet(path)
@@ -72,9 +73,20 @@ def load_stock_list() -> pd.DataFrame:
     return pd.read_parquet(path) if path.exists() else pd.DataFrame()
 
 
+# 門檻滑桿的刻度：0.50 ~ 1.00，每 1% 一格。資料包裡的曲線就是抽樣到這些點上匯出的
+# （engine/export/build_public_bundle.py 的 SLIDER_GRID），兩邊必須一致。
+SLIDER_MIN = 0.50
+SLIDER_MAX = 1.00
+SLIDER_STEP = 0.01
+
+
 @st.cache_data(ttl=3600)
 def load_sigcurve(model_key: str) -> pd.DataFrame:
-    path = DATA_DIR / f"sigcurve_{model_key}.csv"
+    # .gz：資料包裡的曲線是整條 gzip 的（不抽樣，一列不少）。read_csv 認得副檔名，
+    # 會自己解壓。留 .csv 的後備路徑，舊資料包也讀得起來。
+    path = DATA_DIR / f"sigcurve_{model_key}.csv.gz"
+    if not path.exists():
+        path = DATA_DIR / f"sigcurve_{model_key}.csv"
     if not path.exists():
         return pd.DataFrame(columns=["threshold", "n", "win_rate", "avg_return"])
     return pd.read_csv(path)
@@ -88,6 +100,18 @@ def load_backtest() -> pd.DataFrame:
 
 def model_keys() -> list[str]:
     return [m["key"] for m in load_manifest().get("models", [])]
+
+
+def model_name(key: str) -> str:
+    """選單顯示的名稱（<特徵集>·<目標>）。manifest 沒帶 name 就退回代號。
+
+    名字由 engine 端的 `bundle.MODEL_NAMES` 決定，這裡只是顯示 —— 兩邊各寫一份
+    會飄掉，所以不在這個 repo 裡硬編任何模型名稱。
+    """
+    for entry in load_manifest().get("models", []):
+        if entry["key"] == key:
+            return entry.get("name") or key
+    return key
 
 
 def chosen_threshold(key: str) -> float:
@@ -123,18 +147,24 @@ def page_picks() -> None:
     st.title("推薦名單")
     st.warning(TEST_BANNER)
 
-    scores = load_scores()
-    if scores.empty:
-        st.error("找不到 `public_data/scores_test.parquet`。"
+    keys = model_keys()
+    if not keys:
+        st.error("找不到 `public_data/manifest.json`。"
                  "請在 engine 端執行 `make export-public`。")
         return
 
-    keys = model_keys() or sorted(scores["model"].unique())
-    dates = sorted(scores["date"].unique())
-
+    # 先選模型才知道要讀哪一個檔，日期選單再由那個檔的內容決定。
     left, right = st.columns([1, 1])
     with left:
-        model_key = st.selectbox("模型", keys, index=0)
+        model_key = st.selectbox("模型", keys, index=0, format_func=model_name)
+
+    scores = load_scores(model_key)
+    if scores.empty:
+        st.error(f"找不到 `public_data/scores_test_{model_key}.parquet`。"
+                 "請在 engine 端執行 `make export-public`。")
+        return
+
+    dates = sorted(scores["date"].unique())
     with right:
         pick_date = st.selectbox("日期（測試期任一天）", dates,
                                  index=len(dates) - 1,
@@ -142,15 +172,16 @@ def page_picks() -> None:
 
     curve = load_sigcurve(model_key)
     default_thr = chosen_threshold(model_key)
-    day = scores[(scores["model"] == model_key) & (scores["date"] == pick_date)]
+    day = scores[scores["date"] == pick_date]
     if day.empty:
         st.info("這一天沒有這個模型的分數。")
         return
 
-    lo, hi = float(day["score"].min()), float(day["score"].max())
-    thr = st.slider("分數門檻", min_value=round(lo, 4), max_value=round(hi, 4),
-                    value=float(min(max(default_thr, lo), hi)), step=0.005,
-                    help="預設值是使用者當初在驗證期（val_sel）曲線上挑定的門檻。")
+    thr = st.slider("分數門檻", min_value=SLIDER_MIN, max_value=SLIDER_MAX,
+                    value=round(min(max(default_thr, SLIDER_MIN), SLIDER_MAX), 2),
+                    step=SLIDER_STEP,
+                    help="預設值是使用者當初在驗證期（val_sel）曲線上挑定的門檻。"
+                         "刻度是固定的 1%，與資料包裡的曲線刻度一致。")
 
     stats = sigcurve_stats_at(curve, thr)
     if stats:
@@ -173,6 +204,144 @@ def page_picks() -> None:
         use_container_width=True, hide_index=True,
         column_config={"分數": st.column_config.NumberColumn(format="%.4f")})
     st.caption("名單是模型在**當天收盤後**算出來的分數，實際進場價會是隔天。"
+               "這是回溯結果，不是今天的預測。")
+
+
+
+# ── 訊號清單：該模型在測試期所有「分數 ≥ 門檻」的紀錄 ────────────────────────
+
+def compute_forward_returns(price: pd.DataFrame, bars: int = 20) -> pd.DataFrame:
+    """每一列往後第 `bars` 根 K 的收盤報酬（%）。純函式，可單獨測試。
+
+    資料包的價格刻意多帶 20 個交易日，所以期間最後那批訊號也算得出結果；
+    真的還沒走完 20 天的會是 NaN，前端要顯示成「未定案」而不是虧損。
+
+    ⚠️ `shift` 前一定要先依 (stock_id, date) 排序 —— 少了排序不會報錯，
+    只會安靜地把別檔股票或別天的價格算進來。
+    """
+    frame = price[["date", "stock_id", "close"]].sort_values(["stock_id", "date"])
+    future = frame.groupby("stock_id")["close"].shift(-bars)
+    return pd.DataFrame({"date": frame["date"], "stock_id": frame["stock_id"],
+                         "fwd20": (future / frame["close"] - 1) * 100})
+
+
+@st.cache_data(ttl=3600)
+def forward_returns(bars: int = 20) -> pd.DataFrame:
+    """快取版：自己去讀價格，不吃 DataFrame 參數。
+
+    `st.cache_data` 必須雜湊參數，傳 733k 列的 DataFrame 進來會讓每次 rerun
+    都重新雜湊整份（Streamlit Community Cloud 只有 1GB 記憶體）。
+    """
+    return compute_forward_returns(load_price(), bars)
+
+
+
+SIGNAL_ROW_LIMIT = 3000     # 一次最多渲染這麼多列，再多瀏覽器會卡
+
+
+def page_signals() -> None:
+    st.title("訊號清單")
+    st.warning(TEST_BANNER)
+    st.caption("這個模型在測試期所有「分數 ≥ 門檻」的紀錄。"
+               "點任一列可以跳到那檔股票在那一天的技術面。")
+
+    keys = model_keys()
+    if not keys:
+        st.error("找不到 `public_data/manifest.json`。"
+                 "請在 engine 端執行 `make export-public`。")
+        return
+
+    model_key = st.selectbox("模型", keys, index=0, key="siglist_model",
+                             format_func=model_name)
+    scores = load_scores(model_key)
+    if scores.empty:
+        st.error(f"找不到 `public_data/scores_test_{model_key}.parquet`。")
+        return
+
+    default_thr = chosen_threshold(model_key)
+    days = sorted(scores["date"].dt.date.unique())
+    c1, c2, c3 = st.columns([2, 1, 1])
+    with c1:
+        thr = st.slider("分數門檻", min_value=SLIDER_MIN, max_value=SLIDER_MAX,
+                        value=round(min(max(default_thr, SLIDER_MIN), SLIDER_MAX), 2),
+                        step=SLIDER_STEP, key="siglist_thr",
+                        help="預設值是使用者當初在驗證期曲線上挑定的門檻。")
+    with c2:
+        d_from = st.date_input("起", value=days[0], min_value=days[0],
+                               max_value=days[-1], key="siglist_from")
+    with c3:
+        d_to = st.date_input("迄", value=days[-1], min_value=days[0],
+                             max_value=days[-1], key="siglist_to")
+    if d_from > d_to:
+        st.error("起始日期不能晚於結束日期。")
+        return
+
+    sig = scores[(scores["score"] >= thr)
+                 & (scores["date"] >= pd.Timestamp(d_from))
+                 & (scores["date"] <= pd.Timestamp(d_to))].copy()
+    if sig.empty:
+        st.info(f"門檻 {thr:.2f} 在這段期間沒有任何訊號。")
+        return
+
+    # 附上股名、產業與訊號當天收盤價
+    listing = load_stock_list()
+    if not listing.empty:
+        cols = [c for c in ["stock_id", "stock_name", "industry"] if c in listing.columns]
+        sig = sig.merge(listing[cols], on="stock_id", how="left")
+    price = load_price()
+    if not price.empty:
+        sig = sig.merge(price[["date", "stock_id", "close"]],
+                        on=["date", "stock_id"], how="left")
+        sig = sig.merge(forward_returns(), on=["date", "stock_id"], how="left")
+
+    sig = sig.sort_values(["date", "score"], ascending=[False, False]).reset_index(drop=True)
+    st.success(f"共 {len(sig):,} 筆訊號　"
+               f"（{sig['date'].min().date()} ~ {sig['date'].max().date()}，"
+               f"{sig['stock_id'].nunique():,} 檔股票）")
+
+    view = pd.DataFrame({"日期": sig["date"].dt.date, "代號": sig["stock_id"]})
+    if "stock_name" in sig:
+        view["名稱"] = sig["stock_name"].fillna("")
+    if "industry" in sig:
+        view["產業"] = sig["industry"].fillna("")
+    if "close" in sig:
+        view["收盤"] = sig["close"]
+    view["分數"] = sig["score"]
+    if "fwd20" in sig:
+        view["20日後報酬"] = sig["fwd20"]
+        pending = int(sig["fwd20"].isna().sum())
+        if pending:
+            st.caption(f"其中 {pending:,} 筆的 20 個交易日還沒走完，報酬欄是空的 —— "
+                       "**未定案，不是虧損**。")
+
+    if len(view) > SIGNAL_ROW_LIMIT:
+        st.caption(f"⚠️ 只顯示最新 {SIGNAL_ROW_LIMIT:,} 筆 —— "
+                   "縮小日期區間或提高門檻就看得到更早的。")
+    event = st.dataframe(
+        view.head(SIGNAL_ROW_LIMIT), use_container_width=True, hide_index=True,
+        on_select="rerun", selection_mode="single-row", key="siglist_table",
+        column_config={"分數": st.column_config.NumberColumn(format="%.4f"),
+                       "收盤": st.column_config.NumberColumn(format="%.2f"),
+                       "20日後報酬": st.column_config.NumberColumn(format="%+.2f%%")})
+    try:
+        rows = list(event.selection.rows)
+    except Exception:
+        rows = []
+    if rows:
+        hit = sig.iloc[rows[0]]
+        target = (hit["stock_id"], hit["date"].date())
+        # 只在「這次選取還沒處理過」時跳轉。表格的選取狀態會留在 session_state，
+        # 少了這道判斷，使用者清除跳轉後切回本頁會立刻又被跳走（跳轉迴圈）。
+        if st.session_state.get("siglist_handled") != target:
+            st.session_state["siglist_handled"] = target
+            st.session_state["stock_jump"] = target
+            st.session_state["page"] = "個股技術面"
+            st.rerun()
+
+    st.download_button(
+        "下載這份清單（CSV）", view.to_csv(index=False).encode("utf-8-sig"),
+        file_name=f"signals_{model_key}_{d_from}_{d_to}.csv", mime="text/csv")
+    st.caption("分數是**當天收盤後**算出來的，實際進場價會是隔天開盤之後。"
                "這是回溯結果，不是今天的預測。")
 
 
@@ -213,8 +382,21 @@ def page_stock() -> None:
 
     ids = sorted(price_all["stock_id"].unique())
     names = stock_name_map()
-    stock_id = st.selectbox(f"股票（{len(ids):,} 檔可查）", ids,
+
+    # 從「訊號清單」點過來時，預先選好那檔股票、那一天。
+    jump_id, jump_date = st.session_state.get("stock_jump", (None, None))
+    # 選單用固定 key，不靠 index 決定 widget 身分 —— 否則 index 一變（例如按下
+    # 「清除跳轉」）widget 會被當成新的，選擇被重置回第一檔。
+    if jump_id in ids and st.session_state.get("stock_pick") != jump_id:
+        st.session_state["stock_pick"] = jump_id
+    stock_id = st.selectbox(f"股票（{len(ids):,} 檔可查）", ids, key="stock_pick",
                             format_func=lambda s: f"{s} {names.get(s, '')}".strip())
+    if jump_id is not None:
+        jc1, jc2 = st.columns([3, 1])
+        jc1.info(f"已從訊號清單跳轉到 **{stock_id} {names.get(stock_id, '')}** 的 **{jump_date}**")
+        if jc2.button("清除跳轉", use_container_width=True):
+            del st.session_state["stock_jump"]
+            st.rerun()
 
     ohlc = load_price(stock_id)
     if len(ohlc) < 30:
@@ -222,7 +404,12 @@ def page_stock() -> None:
         return
 
     dates = list(ohlc["date"])
-    as_of = st.select_slider("看哪一天", options=dates, value=dates[-1],
+    default_as_of = dates[-1]
+    if jump_date is not None and stock_id == jump_id:
+        on_or_before = [d for d in dates if d <= pd.Timestamp(jump_date)]
+        if on_or_before:
+            default_as_of = on_or_before[-1]
+    as_of = st.select_slider("看哪一天", options=dates, value=default_as_of,
                              format_func=lambda d: pd.Timestamp(d).date().isoformat())
     window = ohlc[ohlc["date"] <= as_of].reset_index(drop=True)
     close = float(window["close"].iloc[-1])
@@ -338,7 +525,7 @@ def page_performance() -> None:
     st.caption("門檻是**由人看這條曲線挑的**，不是自動規則算出來的。"
                "曲線畫的是驗證期（2024 下半年）在各個門檻下的訊號數與績效。")
     keys = model_keys()
-    picked = st.multiselect("模型", keys, default=keys[:3])
+    picked = st.multiselect("模型", keys, default=keys[:3], format_func=model_name)
     metric = st.radio("指標", ["win_rate", "avg_return"], horizontal=True,
                       format_func=lambda m: {"win_rate": "勝率",
                                              "avg_return": "平均報酬"}[m])
@@ -346,7 +533,7 @@ def page_performance() -> None:
     for key in picked:
         curve = load_sigcurve(key)
         if not curve.empty:
-            curves[key] = curve.set_index("n")[metric]
+            curves[model_name(key)] = curve.set_index("n")[metric]
     if curves:
         st.line_chart(pd.DataFrame(curves))
         st.caption("橫軸是訊號數（越右邊門檻越鬆）。")
@@ -361,6 +548,7 @@ def page_performance() -> None:
 
 
 def _fmt_backtest(frame: pd.DataFrame) -> pd.DataFrame:
+    frame = frame.assign(model=frame["model"].map(model_name))
     cols = {"model": "模型", "threshold": "門檻", "trades": "交易筆數",
             "win_rate": "勝率", "avg_return": "平均單筆報酬",
             "total_return": "累積報酬", "sharpe": "Sharpe",
@@ -429,6 +617,7 @@ def page_about() -> None:
 
 PAGES = {
     "推薦名單": page_picks,
+    "訊號清單": page_signals,
     "個股技術面": page_stock,
     "模型成效／回測": page_performance,
     "關於": page_about,
@@ -438,7 +627,7 @@ PAGES = {
 def main() -> None:
     st.sidebar.title("台股預測系統")
     st.sidebar.caption("測試期展示站 · 非即時預測")
-    choice = st.sidebar.radio("頁面", list(PAGES))
+    choice = st.sidebar.radio("頁面", list(PAGES), key="page")
     manifest = load_manifest()
     if manifest:
         period = manifest.get("period", {})

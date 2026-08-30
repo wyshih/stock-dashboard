@@ -18,10 +18,10 @@
 | 檔案 | 是什麼 |
 |---|---|
 | `price_test.parquet` | 測試期（2025-02-01 ~ 2026-07-31）全市場 OHLCV |
-| `scores_test.parquet` | 5 個模型 × 該期間每日每股的分數 |
+| `scores_test_m*.parquet` | 各模型該期間每日每股的分數（一個模型一個檔，×5）|
 | `pattern_hits.parquet` | 148 條說法的命中矩陣（int8） |
 | `pattern_stats.json` | 148 條說法的**全市場全歷史**條件統計 + 對照組 |
-| `sigcurve_m*.csv` | 各模型 val_sel 門檻曲線（滑桿旁的數字讀這個） |
+| `sigcurve_m*.csv.gz` | 各模型 val_sel 門檻曲線，整條 gzip、不抽樣（滑桿旁的數字讀這個）|
 | `backtest_summary.csv` | 絕對門檻版 + 訊號數對齊版兩張表 |
 | `stock_list.parquet` | 代號 / 名稱 / 市場 / 產業 |
 | `manifest.json` | 期間、5 個模型與門檻、產生時間、資料口徑、免責聲明 |
@@ -49,12 +49,14 @@
 6. **兩個切分交界各留一個月 embargo。**
 7. **門檻由人看 val_sel 曲線挑，不用自動規則；程式讀檔不硬編；每次重訓必重挑。**
    本站的門檻一律讀 `manifest.json`，不寫死在 `streamlit_app.py` 裡。
+   挑定的門檻必須落在滑桿刻度上（0.50~1.00，每 1% 一格），否則使用者拉不到它 ——
+   engine 端 `build_public_bundle` 匯出時會擋，不會四捨五入成鄰近刻度。
 8. **回測只用 engine 的 `backtest.simulate()` / `performance()`**，
    不得另寫 scratchpad 版。本站只顯示 engine 算好的結果，不重算。
 9. **模型比較必須附訊號數對齊版（每日前 1.5%）。** 本系統「訊號越少報酬越高」，
    固定門檻的比較會退化成「門檻鬆緊」的比較。「模型成效」頁兩張表都要在，
    而且要明講第二張才是公平比較。
-10. **不並行訓練**（10 核機器 RF 內層已吃 6 核，並行反而更慢）。
+10. **不並行訓練**（10 核機器 RF 內層已吃 8 核，並行反而更慢）。
 11. **`validate_data.py` 驗「資料裡最新那一天」，不是「今天」。**
 12. **`fetch_stock_list` 必須最先跑，`build_features` 必須最後跑。**
 13. **路徑只走 `paths.py`**（本 repo 是 `DATA_DIR = public_data/`，同樣只有一處定義）。

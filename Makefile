@@ -7,14 +7,16 @@ SHELL := /bin/bash
 PY := $(shell test -x .venv/bin/python && echo .venv/bin/python \
         || (test -x ../engine/.venv/bin/python && echo ../engine/.venv/bin/python) \
         || echo python3)
-PORT ?= 8501
+# 8502：engine repo 的完整版前端佔 8501，兩支要能同時開著對照。
+PORT ?= 8502
 
 .PHONY: help install app test
 
 help:
 	@echo ""
 	@echo "  make install   建立 venv 並安裝套件（不需要 TA-Lib）"
-	@echo "  make app       啟動展示站  http://localhost:$(PORT)"
+	@echo "  make app       啟動展示站（精簡版）  http://localhost:$(PORT)"
+	@echo "                 engine repo 的完整版在 8501，兩支可同時開"
 	@echo "  make test      跑單元測試"
 	@echo ""
 	@echo "  資料包由 engine repo 的 \`make export-public\` 產生，"

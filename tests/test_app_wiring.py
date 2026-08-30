@@ -43,11 +43,14 @@ class TestApp:
         source = (REPO / "streamlit_app.py").read_text(encoding="utf-8")
         ast.parse(source)
 
-    def test_app_has_four_pages(self):
+    def test_app_pages(self):
+        """精簡版的頁面清單 —— 少了任何一頁都是回歸。"""
         import re
         source = (REPO / "streamlit_app.py").read_text(encoding="utf-8")
         block = re.search(r"PAGES = \{(.*?)\}", source, re.S)
-        assert block and block.group(1).count(":") == 4
+        assert block
+        pages = re.findall(r'"([^"]+)":', block.group(1))
+        assert pages == ["推薦名單", "訊號清單", "個股技術面", "模型成效／回測", "關於"]
 
     def test_no_hardcoded_thresholds(self):
         """門檻一律讀 manifest.json（CLAUDE.md 規則 7）。"""
