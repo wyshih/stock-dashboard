@@ -345,6 +345,162 @@ def page_signals() -> None:
                "這是回溯結果，不是今天的預測。")
 
 
+
+# ── 個股預測走勢：一檔股票在測試期每天的分數與股價 ──────────────────────────
+
+# 圖裡各模型的線色。取自 dataviz 的分類色階前幾個 slot，明暗兩種主題都驗過
+# 對比與色盲可辨識度。順序固定，不循環 —— 同一個模型在任何組合下都是同一個顏色。
+MODEL_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#4a3aa7"]
+
+
+def page_history() -> None:
+    st.title("個股預測走勢")
+    st.warning(TEST_BANNER)
+    st.caption("一檔股票在測試期每天的模型分數，與同期間的股價對照 —— "
+               "看得出分數是不是在漲之前就先亮。")
+
+    keys = model_keys()
+    if not keys:
+        st.error("找不到 `public_data/manifest.json`。請在 engine 端執行 `make export-public`。")
+        return
+
+    price_all = load_price()
+    if price_all.empty:
+        st.error("找不到 `public_data/price_test.parquet`。")
+        return
+
+    names = stock_name_map()
+    ids = sorted(price_all["stock_id"].unique())
+    left, right = st.columns([1, 1])
+    with left:
+        jump_id = st.session_state.get("stock_jump", (None, None))[0]
+        if jump_id in ids and st.session_state.get("hist_pick") != jump_id:
+            st.session_state["hist_pick"] = jump_id
+        stock_id = st.selectbox(f"股票（{len(ids):,} 檔）", ids, key="hist_pick",
+                                format_func=lambda s: f"{s} {names.get(s, '')}".strip())
+    with right:
+        picked = st.multiselect("模型（可複選）", keys, default=keys[:1],
+                                format_func=model_name, key="hist_models")
+    if not picked:
+        st.info("請至少選一個模型。")
+        return
+
+    scores = {}
+    for key in picked:
+        frame = load_scores(key)
+        one = frame[frame["stock_id"] == stock_id][["date", "score"]]
+        if not one.empty:
+            scores[key] = one.sort_values("date")
+    if not scores:
+        st.info("這檔股票在測試期沒有任何模型分數（多半是上市不久，特徵暖機期不足）。")
+        return
+
+    ohlc = load_price(stock_id)
+    dates = sorted(set(ohlc["date"]).union(*(set(s["date"]) for s in scores.values())))
+    c1, c2 = st.columns(2)
+    with c1:
+        d_from = st.date_input("起", value=dates[0].date(),
+                               min_value=dates[0].date(), max_value=dates[-1].date(),
+                               key="hist_from")
+    with c2:
+        d_to = st.date_input("迄", value=dates[-1].date(),
+                             min_value=dates[0].date(), max_value=dates[-1].date(),
+                             key="hist_to")
+    if d_from > d_to:
+        st.error("起始日期不能晚於結束日期。")
+        return
+    lo, hi = pd.Timestamp(d_from), pd.Timestamp(d_to)
+
+    window = ohlc[(ohlc["date"] >= lo) & (ohlc["date"] <= hi)]
+    if window.empty:
+        st.info("這段期間沒有價格資料。")
+        return
+
+    st.plotly_chart(_history_figure(window, scores, picked, lo, hi),
+                    use_container_width=True)
+    st.caption("上圖是股價（K 棒），下圖是模型分數。虛線是各模型挑定的門檻，"
+               "分數在虛線之上就是一筆訊號。兩張圖共用同一條時間軸。")
+
+    _history_signal_table(scores, picked, lo, hi, stock_id)
+
+
+def _history_figure(window: pd.DataFrame, scores: dict, picked: list,
+                    lo: pd.Timestamp, hi: pd.Timestamp):
+    """價格與分數上下排、共用 x 軸。
+
+    刻意**不用雙 y 軸** —— 價格和分數的量級完全不同，疊在一起時兩條線的交叉點
+    沒有任何意義，卻很容易被讀成「黃金交叉」。上下排一樣看得出時間先後關係。
+    """
+    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
+
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                        row_heights=[0.62, 0.38], vertical_spacing=0.06,
+                        subplot_titles=("股價", "模型分數"))
+    fig.add_trace(go.Candlestick(
+        x=window["date"], open=window["open"], high=window["high"],
+        low=window["low"], close=window["close"], name="股價",
+        increasing_line_color="#d1493f", decreasing_line_color="#1b7f4d",
+        showlegend=False), row=1, col=1)
+
+    for i, key in enumerate(picked):
+        if key not in scores:
+            continue
+        colour = MODEL_COLORS[i % len(MODEL_COLORS)]
+        one = scores[key]
+        one = one[(one["date"] >= lo) & (one["date"] <= hi)]
+        fig.add_trace(go.Scatter(
+            x=one["date"], y=one["score"], name=model_name(key), mode="lines",
+            line=dict(color=colour, width=2),
+            hovertemplate="%{x|%Y-%m-%d}　%{y:.4f}<extra>" + model_name(key) + "</extra>"),
+            row=2, col=1)
+        thr = chosen_threshold(key)
+        fig.add_hline(y=thr, line=dict(color=colour, width=1, dash="dash"),
+                      opacity=0.6, row=2, col=1)
+
+    fig.update_layout(height=620, margin=dict(l=10, r=10, t=44, b=10),
+                      hovermode="x unified", legend=dict(orientation="h", y=-0.12),
+                      xaxis_rangeslider_visible=False)
+    fig.update_yaxes(title_text="價格", row=1, col=1)
+    fig.update_yaxes(title_text="分數", row=2, col=1, range=[0, 1])
+    return fig
+
+
+def _history_signal_table(scores: dict, picked: list, lo: pd.Timestamp,
+                          hi: pd.Timestamp, stock_id: str) -> None:
+    """這段期間這檔股票發出過哪些訊號，以及結果。"""
+    fwd = forward_returns()
+    rows = []
+    for key in picked:
+        if key not in scores:
+            continue
+        thr = chosen_threshold(key)
+        one = scores[key]
+        hit = one[(one["date"] >= lo) & (one["date"] <= hi) & (one["score"] >= thr)]
+        for _, r in hit.iterrows():
+            rows.append({"日期": r["date"].date(), "模型": model_name(key),
+                         "分數": r["score"], "門檻": thr, "date": r["date"]})
+    if not rows:
+        st.info("這段期間這檔股票沒有任何模型發出訊號。")
+        return
+
+    table = pd.DataFrame(rows)
+    table["stock_id"] = stock_id
+    table = table.merge(fwd, on=["date", "stock_id"], how="left")
+    pending = int(table["fwd20"].isna().sum())
+    st.subheader(f"這段期間的訊號　{len(table)} 筆")
+    st.dataframe(
+        table[["日期", "模型", "分數", "門檻", "fwd20"]].rename(
+            columns={"fwd20": "20日後報酬"}).sort_values("日期", ascending=False),
+        use_container_width=True, hide_index=True,
+        column_config={"分數": st.column_config.NumberColumn(format="%.4f"),
+                       "門檻": st.column_config.NumberColumn(format="%.2f"),
+                       "20日後報酬": st.column_config.NumberColumn(format="%+.2f%%")})
+    if pending:
+        st.caption(f"其中 {pending} 筆的 20 個交易日還沒走完，報酬欄是空的 —— "
+                   "**未定案，不是虧損**。")
+
+
 # ── 第二頁：個股技術面 ────────────────────────────────────────────────────────
 
 def _levels_from_price(ohlc: pd.DataFrame, close: float) -> list[Level]:
@@ -618,6 +774,7 @@ def page_about() -> None:
 PAGES = {
     "推薦名單": page_picks,
     "訊號清單": page_signals,
+    "個股預測走勢": page_history,
     "個股技術面": page_stock,
     "模型成效／回測": page_performance,
     "關於": page_about,

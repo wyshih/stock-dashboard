@@ -50,7 +50,8 @@ class TestApp:
         block = re.search(r"PAGES = \{(.*?)\}", source, re.S)
         assert block
         pages = re.findall(r'"([^"]+)":', block.group(1))
-        assert pages == ["推薦名單", "訊號清單", "個股技術面", "模型成效／回測", "關於"]
+        assert pages == ["推薦名單", "訊號清單", "個股預測走勢",
+                         "個股技術面", "模型成效／回測", "關於"]
 
     def test_no_hardcoded_thresholds(self):
         """門檻一律讀 manifest.json（CLAUDE.md 規則 7）。"""
