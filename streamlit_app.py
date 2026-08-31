@@ -11,7 +11,7 @@
 - 圖表上的指標（MA / 布林 / VWAP / 量能）由 `price_test.parquet` 現算，
   那些只需要 OHLCV。
 
-四頁：推薦名單 / 個股技術面 / 模型成效 / 關於。
+五頁：推薦名單 / 訊號清單 / 個股預測走勢 / 個股技術面 / 關於。
 """
 
 from __future__ import annotations
@@ -90,12 +90,6 @@ def load_sigcurve(model_key: str) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame(columns=["threshold", "n", "win_rate", "avg_return"])
     return pd.read_csv(path)
-
-
-@st.cache_data(ttl=3600)
-def load_backtest() -> pd.DataFrame:
-    path = DATA_DIR / "backtest_summary.csv"
-    return pd.read_csv(path) if path.exists() else pd.DataFrame()
 
 
 def model_keys() -> list[str]:
@@ -648,77 +642,17 @@ def page_stock() -> None:
                    "低於 30 筆樣本的一律不給結論。")
 
 
-# ── 第三頁：模型成效 / 回測 ───────────────────────────────────────────────────
-
-def page_performance() -> None:
-    st.title("模型成效與回測")
-    st.warning(TEST_BANNER)
-
-    summary = load_backtest()
-    if summary.empty:
-        st.error("找不到 `public_data/backtest_summary.csv`。")
-        return
-
-    manifest = load_manifest()
-    thresholds = {m["key"]: m["threshold"] for m in manifest.get("models", [])}
-
-    st.subheader("① 絕對門檻版")
-    st.caption("每個模型各自用**使用者挑定的門檻**跑完整測試期。"
-               "口徑 `dedup=False`（每筆超過門檻的訊號都獨立進場），"
-               "與挑門檻時看的曲線同一把尺。")
-    absolute = summary[summary["mode"] == "absolute"].copy()
-    absolute["threshold"] = absolute["model"].map(thresholds).fillna(absolute["threshold"])
-    st.dataframe(_fmt_backtest(absolute), use_container_width=True, hide_index=True)
-
-    st.subheader("② 訊號數對齊版（每日前 1.5%）")
-    st.error("⚠️ **模型比較一定要看這一張。** 本系統「訊號越少報酬越高」，"
-             "固定門檻的比較會退化成「門檻鬆緊」的比較，不是模型好壞的比較。"
-             "這張表讓每個模型每天都只發相同比例的訊號，才是同一條起跑線。")
-    matched = summary[summary["mode"] == "matched_top"]
-    st.dataframe(_fmt_backtest(matched), use_container_width=True, hide_index=True)
-
-    st.subheader("③ 驗證期門檻曲線")
-    st.caption("門檻是**由人看這條曲線挑的**，不是自動規則算出來的。"
-               "曲線畫的是驗證期（2024 下半年）在各個門檻下的訊號數與績效。")
-    keys = model_keys()
-    picked = st.multiselect("模型", keys, default=keys[:3], format_func=model_name)
-    metric = st.radio("指標", ["win_rate", "avg_return"], horizontal=True,
-                      format_func=lambda m: {"win_rate": "勝率",
-                                             "avg_return": "平均報酬"}[m])
-    curves = {}
-    for key in picked:
-        curve = load_sigcurve(key)
-        if not curve.empty:
-            curves[model_name(key)] = curve.set_index("n")[metric]
-    if curves:
-        st.line_chart(pd.DataFrame(curves))
-        st.caption("橫軸是訊號數（越右邊門檻越鬆）。")
-
-    exit_rules = manifest.get("backtest", {}).get("exit_rules", {})
-    if exit_rules:
-        st.caption(
-            f"出場規則：獲利 {exit_rules.get('trail_trigger', 0):.0%} 後啟動移動停利、"
-            f"從最高收盤回落 {exit_rules.get('trail_pct', 0):.0%} 出場、"
-            f"固定停損 {exit_rules.get('stop_loss', 0):.0%}"
-            "（停損有值時 MA20 停損不生效）。")
-
-
-def _fmt_backtest(frame: pd.DataFrame) -> pd.DataFrame:
-    frame = frame.assign(model=frame["model"].map(model_name))
-    cols = {"model": "模型", "threshold": "門檻", "trades": "交易筆數",
-            "win_rate": "勝率", "avg_return": "平均單筆報酬",
-            "total_return": "累積報酬", "sharpe": "Sharpe",
-            "max_drawdown": "最大回撤"}
-    out = frame[[c for c in cols if c in frame.columns]].rename(columns=cols)
-    return out
-
-
-# ── 第四頁：關於 ──────────────────────────────────────────────────────────────
-
 def page_about() -> None:
     st.title("關於這個站")
     manifest = load_manifest()
     st.warning(TEST_BANNER)
+    st.info(
+        "**本站純為學術研究與技術展示之用。**\n\n"
+        "這裡呈現的是一個機器學習模型在歷史資料上的回溯測試結果，"
+        "目的是檢驗方法論、公開研究過程供人檢視與批評 —— "
+        "不是選股服務，不提供投資建議，也沒有任何營利行為。\n\n"
+        "作者與本站不對任何人依據此處內容所作的決策負責。"
+        "台灣證券市場的投資決策請自行研究，或諮詢合法的持牌投顧。")
 
     period = manifest.get("period", {})
     coverage = manifest.get("coverage", {})
@@ -726,7 +660,7 @@ def page_about() -> None:
 ### 這是什麼
 
 一個台股的「未來 20 個交易日會不會漲過半數天數」預測模型的**測試期成績單**。
-5 個模型全部是 RandomForest，差別只在特徵集與 ground truth 的定義。
+{len(manifest.get('models', []))} 個模型全部是 RandomForest，差別只在特徵集與 ground truth 的定義。
 
 - 期間：**{period.get('start', '?')} ~ {period.get('end', '?')}**
   （{period.get('trading_days', '?')} 個交易日）
@@ -746,7 +680,8 @@ def page_about() -> None:
     models = manifest.get("models", [])
     if models:
         st.dataframe(pd.DataFrame([
-            {"模型": m["key"], "挑定門檻": m["threshold"]} for m in models]),
+            {"模型": m.get("name", m["key"]), "代號": m["key"],
+             "挑定門檻": m["threshold"]} for m in models]),
             use_container_width=True, hide_index=True)
     st.markdown("""
 門檻是**由人看驗證期曲線挑的**，不是自動規則算出來的，每次重訓都要重挑。
@@ -765,6 +700,8 @@ def page_about() -> None:
   真的跌到下市的那些樣本從一開始就沒被算進去。
 - **不是即時預測**：這裡的每一個數字都是回溯出來的。模型沒有在這個站上跑推論。
 - **不是投資建議**：歷史績效不代表未來表現。任何投資決策的後果由你自己承擔。
+- **研究用途**：本站是公開的研究紀錄，方法、限制與失敗都寫出來給人檢視。
+  數字會隨資料更新而變動，也可能因為方法缺陷而是錯的 —— 發現問題歡迎指正。
 """)
     st.error(manifest.get("disclaimer", "本站不構成任何投資建議。"))
 
@@ -776,7 +713,6 @@ PAGES = {
     "訊號清單": page_signals,
     "個股預測走勢": page_history,
     "個股技術面": page_stock,
-    "模型成效／回測": page_performance,
     "關於": page_about,
 }
 
