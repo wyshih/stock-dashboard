@@ -46,7 +46,7 @@ def load_manifest() -> dict:
 
 @st.cache_data(ttl=3600)
 def load_scores(model_key: str) -> pd.DataFrame:
-    """單一模型的分數 —— 資料包一個模型一個檔，不用把五個模型全讀進來。"""
+    """單一模型的分數 —— 資料包一個模型一個檔，不用把所有模型全讀進來。"""
     path = DATA_DIR / f"scores_test_{model_key}.parquet"
     if not path.exists():
         return pd.DataFrame()
@@ -660,7 +660,7 @@ def page_about() -> None:
 ### 這是什麼
 
 一個台股的「未來 20 個交易日會不會漲過半數天數」預測模型的**測試期成績單**。
-{len(manifest.get('models', []))} 個模型全部是 RandomForest，差別只在特徵集與 ground truth 的定義。
+{len(manifest.get('models', []))} 個模型全部是 RandomForest，用同一份特徵集，差別只在 ground truth 的定義。
 
 - 期間：**{period.get('start', '?')} ~ {period.get('end', '?')}**
   （{period.get('trading_days', '?')} 個交易日）
@@ -675,7 +675,7 @@ def page_about() -> None:
 兩個切分交界各留**一個月 embargo** —— ground truth 要看未來 20 個交易日，
 交界緊貼的話訓練期末端的答案會落在驗證期裡，等於偷看。
 
-### 5 個模型
+### 模型
 """)
     models = manifest.get("models", [])
     if models:

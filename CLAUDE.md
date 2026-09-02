@@ -3,7 +3,7 @@
 這是**公開**展示站。程式與資料都會被任何人看到，所以第一條規則是：
 
 > **絕對不可以放進這個 repo：**
-> 任何 `.pkl` 模型檔、`features.parquet` / `features_v3.parquet`、
+> 任何 `.pkl` 模型檔、`features.parquet`、
 > 2025-02 之前的任何資料、`.env` 或任何 secret、`doc/BACKTEST_LOG.md`。
 
 資料包由隔壁的 private repo（`../engine/`）用 `make export-public` 產出，
@@ -18,13 +18,13 @@
 | 檔案 | 是什麼 |
 |---|---|
 | `price_test.parquet` | 測試期（2025-02-01 ~ 2026-07-31）全市場 OHLCV |
-| `scores_test_m*.parquet` | 各模型該期間每日每股的分數（一個模型一個檔，×5）|
+| `scores_test_m*.parquet` | 各模型該期間每日每股的分數（一個模型一個檔）|
 | `pattern_hits.parquet` | 148 條說法的命中矩陣（int8） |
 | `pattern_stats.json` | 148 條說法的**全市場全歷史**條件統計 + 對照組 |
 | `sigcurve_m*.csv.gz` | 各模型 val_sel 門檻曲線，整條 gzip、不抽樣（滑桿旁的數字讀這個）|
 | `backtest_summary.csv` | 絕對門檻版 + 訊號數對齊版兩張表 |
 | `stock_list.parquet` | 代號 / 名稱 / 市場 / 產業 |
-| `manifest.json` | 期間、5 個模型與門檻、產生時間、資料口徑、免責聲明 |
+| `manifest.json` | 期間、各模型與門檻、產生時間、資料口徑、免責聲明 |
 
 `frontend/` 底下的 `indicators.py` / `levels.py` / `technical_chart.py` /
 `pattern_base.py` / `patterns.py` / `patterns_talib.py` / `patterns_chip.py` /
