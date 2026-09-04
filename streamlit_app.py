@@ -339,6 +339,100 @@ def page_signals() -> None:
                "這是回溯結果，不是今天的預測。")
 
 
+# ── 型態規則：fpm 專案挖出的平盤起漲點規則，測試期樣本外命中買點 ─────────────
+
+@st.cache_data(ttl=3600)
+def load_fpm_rule_hits() -> pd.DataFrame:
+    path = DATA_DIR / "fpm_rule_hits.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(path)
+    df["stock_id"] = df["stock_id"].astype(str)
+    return df
+
+
+@st.cache_data(ttl=3600)
+def load_fpm_rule_stats() -> dict:
+    path = DATA_DIR / "fpm_rule_stats.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def page_fpm_rules() -> None:
+    st.title("型態規則")
+    st.warning(TEST_BANNER)
+    st.caption("另一個獨立專案（fpm）從歷史資料挖出的「平盤起漲點」規則，"
+               "以下只顯示**測試期（2025-02~2026-07）樣本外**的歷史命中買點——"
+               "規則沒看過這段資料，才能當驗證用。點任一列可以跳到那檔股票的走勢。")
+
+    stats = load_fpm_rule_stats()
+    hits = load_fpm_rule_hits()
+    if not stats or hits.empty:
+        st.error("找不到 `public_data/fpm_rule_hits.parquet` 或 `fpm_rule_stats.json`。"
+                 "請在 engine 端執行 `make export-public`。")
+        return
+
+    with st.expander("⚠️ 這些規則的已知限制（一定要看）", expanded=False):
+        for c in stats.get("caveats", []):
+            st.markdown(f"- {c}")
+
+    rules = stats.get("rules", [])
+    name_by_id = {r["id"]: r["name"] for r in rules}
+    stats_by_id = {r["id"]: r["stats"] for r in rules}
+
+    selected = st.multiselect(
+        "選規則（可複選，預設全選）", options=list(name_by_id),
+        default=list(name_by_id),
+        format_func=lambda rid: f"{rid}：{name_by_id[rid][:40]}",
+        key="fpm_rule_select",
+    )
+    if not selected:
+        st.info("至少選一條規則")
+        return
+
+    stats_df = pd.DataFrame([
+        {"規則": rid, "名稱": name_by_id[rid], **stats_by_id[rid]}
+        for rid in selected
+    ])
+    st.caption("勝率是嚴格定義（20日內漲幅夠大+統計顯著+過程無大回檔）下的命中比例，"
+               "全市場基準約 2.3%——lift 是勝率相對基準的倍數。")
+    st.dataframe(stats_df, use_container_width=True, hide_index=True)
+
+    filtered = hits[hits["rule_id"].isin(selected)].sort_values("date", ascending=False)
+    st.success(f"共 {len(filtered):,} 筆歷史命中買點（{filtered['date'].min().date()} ~ "
+               f"{filtered['date'].max().date()}，{filtered['stock_id'].nunique():,} 檔股票）")
+
+    names = stock_name_map()
+    view = pd.DataFrame({
+        "日期": filtered["date"].dt.date,
+        "代號": filtered["stock_id"],
+        "名稱": filtered["stock_id"].map(names).fillna(""),
+        "規則": filtered["rule_id"],
+        "20日後超額報酬": filtered["r_end"].map(lambda x: f"{x:+.1%}"),
+        "期間最大回檔": filtered["mdd"].map(lambda x: f"{x:.1%}"),
+        "是否起漲": filtered["label"].map({1: "✅", 0: "—"}),
+    })
+    event = st.dataframe(
+        view.head(SIGNAL_ROW_LIMIT), use_container_width=True, hide_index=True,
+        on_select="rerun", selection_mode="single-row", key="fpm_rules_table")
+    try:
+        rows = list(event.selection.rows)
+    except Exception:
+        rows = []
+    if rows:
+        hit = filtered.iloc[rows[0]]
+        target = (hit["stock_id"], hit["date"].date())
+        if st.session_state.get("fpm_rules_handled") != target:
+            st.session_state["fpm_rules_handled"] = target
+            st.session_state["stock_jump"] = target
+            # 跳「個股預測走勢」而不是「個股技術面」：後者只看到跳轉日「為止」的圖，
+            # 看不到之後有沒有真的漲；前者預設就是整段測試期，天生看得到後續走勢。
+            st.session_state["page"] = "個股預測走勢"
+            st.rerun()
+
+    st.download_button(
+        "下載這份清單（CSV）", view.to_csv(index=False).encode("utf-8-sig"),
+        file_name="fpm_rule_hits.csv", mime="text/csv")
+
 
 # ── 個股預測走勢：一檔股票在測試期每天的分數與股價 ──────────────────────────
 
@@ -713,6 +807,7 @@ PAGES = {
     "訊號清單": page_signals,
     "個股預測走勢": page_history,
     "個股技術面": page_stock,
+    "型態規則": page_fpm_rules,
     "關於": page_about,
 }
 

@@ -1,0 +1,170 @@
+{
+ "source": "fpm（獨立的型態探勘專案，見該專案 README/PLAN.md）",
+ "caveats": [
+  "permutation test 從計畫原訂 500 次降到 20 次（跑不完全量，已在 fpm 專案記錄）",
+  "只驗證了一種「平盤」定義（trend_r2 最低五分位），另一種（價格區間窄）驗證中",
+  "資料不含下市股票，存在存活者偏差，結果為上界估計",
+  "單筆命中勝率（嚴格定義）只有 5~7%，不是穩贏訊號，是統計期望值為正的邊際優勢"
+ ],
+ "rules": [
+  {
+   "name": "規則1：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1",
+   "id": "rule_01",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "mkt_return_20d=R1",
+    "return_5d=Q1"
+   ],
+   "stats": {
+    "n_windows_significant": 3,
+    "oos_coverage": 1139,
+    "win_rate": 0.0694,
+    "lift": 2.588,
+    "mean_return_net": 0.0091
+   }
+  },
+  {
+   "name": "規則2：dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & return_5d=Q1",
+   "id": "rule_02",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "dist_low_60=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_return_20d=R1",
+    "return_5d=Q1"
+   ],
+   "stats": {
+    "n_windows_significant": 3,
+    "oos_coverage": 1237,
+    "win_rate": 0.0687,
+    "lift": 2.549,
+    "mean_return_net": 0.0116
+   }
+  },
+  {
+   "name": "規則3：dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1",
+   "id": "rule_03",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "dist_low_60=Q5",
+    "mkt_return_20d=R1",
+    "return_5d=Q1"
+   ],
+   "stats": {
+    "n_windows_significant": 3,
+    "oos_coverage": 1393,
+    "win_rate": 0.0632,
+    "lift": 2.344,
+    "mean_return_net": 0.0057
+   }
+  },
+  {
+   "name": "規則4：dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1 & return_60d=Q5",
+   "id": "rule_04",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "dist_low_60=Q5",
+    "mkt_return_20d=R1",
+    "return_5d=Q1",
+    "return_60d=Q5"
+   ],
+   "stats": {
+    "n_windows_significant": 3,
+    "oos_coverage": 1123,
+    "win_rate": 0.057,
+    "lift": 2.124,
+    "mean_return_net": 0.0044
+   }
+  },
+  {
+   "name": "規則5：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3",
+   "id": "rule_05",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_windows_significant": 3,
+    "oos_coverage": 3244,
+    "win_rate": 0.0536,
+    "lift": 1.991,
+    "mean_return_net": 0.0099
+   }
+  },
+  {
+   "name": "規則6：atr_ratio=Q5 & close_ma60_ratio=Q5 & mkt_vol_20d=R3",
+   "id": "rule_06",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "close_ma60_ratio=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_windows_significant": 3,
+    "oos_coverage": 2794,
+    "win_rate": 0.0519,
+    "lift": 1.925,
+    "mean_return_net": 0.0146
+   }
+  },
+  {
+   "name": "規則7：atr_ratio=Q5 & dist_low_60=Q5 & mkt_vol_20d=R3",
+   "id": "rule_07",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_windows_significant": 3,
+    "oos_coverage": 3876,
+    "win_rate": 0.0531,
+    "lift": 1.911,
+    "mean_return_net": 0.0099
+   }
+  },
+  {
+   "name": "規則8：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
+   "id": "rule_08",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "mkt_return_20d=R1",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_windows_significant": 2,
+    "oos_coverage": 2439,
+    "win_rate": 0.0558,
+    "lift": 1.906,
+    "mean_return_net": 0.0236
+   }
+  },
+  {
+   "name": "規則9：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
+   "id": "rule_09",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_return_20d=R1",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_windows_significant": 2,
+    "oos_coverage": 2358,
+    "win_rate": 0.0539,
+    "lift": 1.881,
+    "mean_return_net": 0.0193
+   }
+  }
+ ]
+}
