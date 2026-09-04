@@ -8,8 +8,119 @@
  ],
  "rules": [
   {
-   "name": "規則1：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1",
    "id": "rule_01",
+   "name": "規則1：dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "dist_low_60=Q5",
+    "mkt_return_20d=R1",
+    "return_5d=Q1"
+   ],
+   "stats": {
+    "n_variants_confirmed": 4,
+    "n_windows_significant": 3,
+    "oos_coverage": 1393,
+    "win_rate": 0.0625,
+    "lift": 3.224,
+    "mean_return_net": 0.0057
+   }
+  },
+  {
+   "id": "rule_02",
+   "name": "規則2：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "mkt_return_20d=R1",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 4,
+    "n_windows_significant": 3,
+    "oos_coverage": 2439,
+    "win_rate": 0.0558,
+    "lift": 2.879,
+    "mean_return_net": 0.0236
+   }
+  },
+  {
+   "id": "rule_03",
+   "name": "規則3：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 4,
+    "n_windows_significant": 3,
+    "oos_coverage": 3244,
+    "win_rate": 0.0536,
+    "lift": 2.769,
+    "mean_return_net": 0.0099
+   }
+  },
+  {
+   "id": "rule_04",
+   "name": "規則4：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_return_20d=R1",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 4,
+    "n_windows_significant": 3,
+    "oos_coverage": 2358,
+    "win_rate": 0.0534,
+    "lift": 2.759,
+    "mean_return_net": 0.0193
+   }
+  },
+  {
+   "id": "rule_05",
+   "name": "規則5：atr_ratio=Q5 & dist_low_60=Q5 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 4,
+    "n_windows_significant": 3,
+    "oos_coverage": 3876,
+    "win_rate": 0.0531,
+    "lift": 2.744,
+    "mean_return_net": 0.0099
+   }
+  },
+  {
+   "id": "rule_06",
+   "name": "規則6：atr_ratio=Q5 & close_ma60_ratio=Q5 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "close_ma60_ratio=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 4,
+    "n_windows_significant": 3,
+    "oos_coverage": 2794,
+    "win_rate": 0.0519,
+    "lift": 2.679,
+    "mean_return_net": 0.0146
+   }
+  },
+  {
+   "id": "rule_07",
+   "name": "規則7：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1",
    "precondition": "trend_r2=Q1",
    "items": [
     "atr_ratio=Q5",
@@ -18,16 +129,17 @@
     "return_5d=Q1"
    ],
    "stats": {
+    "n_variants_confirmed": 3,
     "n_windows_significant": 3,
     "oos_coverage": 1139,
     "win_rate": 0.0694,
-    "lift": 2.588,
+    "lift": 3.581,
     "mean_return_net": 0.0091
    }
   },
   {
-   "name": "規則2：dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & return_5d=Q1",
-   "id": "rule_02",
+   "id": "rule_08",
+   "name": "規則8：dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & return_5d=Q1",
    "precondition": "trend_r2=Q1",
    "items": [
     "dist_low_60=Q5",
@@ -36,33 +148,17 @@
     "return_5d=Q1"
    ],
    "stats": {
+    "n_variants_confirmed": 3,
     "n_windows_significant": 3,
     "oos_coverage": 1237,
-    "win_rate": 0.0687,
-    "lift": 2.549,
+    "win_rate": 0.0679,
+    "lift": 3.506,
     "mean_return_net": 0.0116
    }
   },
   {
-   "name": "規則3：dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1",
-   "id": "rule_03",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "dist_low_60=Q5",
-    "mkt_return_20d=R1",
-    "return_5d=Q1"
-   ],
-   "stats": {
-    "n_windows_significant": 3,
-    "oos_coverage": 1393,
-    "win_rate": 0.0632,
-    "lift": 2.344,
-    "mean_return_net": 0.0057
-   }
-  },
-  {
-   "name": "規則4：dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1 & return_60d=Q5",
-   "id": "rule_04",
+   "id": "rule_09",
+   "name": "規則9：dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1 & return_60d=Q5",
    "precondition": "trend_r2=Q1",
    "items": [
     "dist_low_60=Q5",
@@ -71,99 +167,493 @@
     "return_60d=Q5"
    ],
    "stats": {
+    "n_variants_confirmed": 3,
     "n_windows_significant": 3,
     "oos_coverage": 1123,
-    "win_rate": 0.057,
-    "lift": 2.124,
+    "win_rate": 0.0561,
+    "lift": 2.896,
     "mean_return_net": 0.0044
    }
   },
   {
-   "name": "規則5：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3",
-   "id": "rule_05",
+   "id": "rule_10",
+   "name": "規則10：mkt_vol_20d=R3 & std_ratio=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "mkt_vol_20d=R3",
+    "std_ratio=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 3,
+    "n_windows_significant": 3,
+    "oos_coverage": 2076,
+    "win_rate": 0.0549,
+    "lift": 2.835,
+    "mean_return_net": 0.0087
+   }
+  },
+  {
+   "id": "rule_11",
+   "name": "規則11：bb_width_pct=Q5 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "bb_width_pct=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 3,
+    "n_windows_significant": 3,
+    "oos_coverage": 2055,
+    "win_rate": 0.054,
+    "lift": 2.789,
+    "mean_return_net": 0.0137
+   }
+  },
+  {
+   "id": "rule_12",
+   "name": "規則12：atr_ratio=Q5 & mkt_vol_20d=R3 & std_ratio=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "mkt_vol_20d=R3",
+    "std_ratio=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 2,
+    "n_windows_significant": 3,
+    "oos_coverage": 1686,
+    "win_rate": 0.0581,
+    "lift": 3.001,
+    "mean_return_net": 0.0098
+   }
+  },
+  {
+   "id": "rule_13",
+   "name": "規則13：atr_ratio=Q5 & dist_low_60=Q5 & mkt_vol_20d=R3 & return_60d=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "mkt_vol_20d=R3",
+    "return_60d=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 2,
+    "n_windows_significant": 3,
+    "oos_coverage": 3009,
+    "win_rate": 0.0528,
+    "lift": 2.728,
+    "mean_return_net": 0.0111
+   }
+  },
+  {
+   "id": "rule_14",
+   "name": "規則14：atr_ratio=Q5 & bb_width_pct=Q5 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "bb_width_pct=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1662,
+    "win_rate": 0.0578,
+    "lift": 2.982,
+    "mean_return_net": 0.0164
+   }
+  },
+  {
+   "id": "rule_15",
+   "name": "規則15：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3 & return_60d=Q5",
    "precondition": "trend_r2=Q1",
    "items": [
     "atr_ratio=Q5",
     "dist_low_60=Q5",
     "ma20_ma120_ratio=Q5",
-    "mkt_vol_20d=R3"
+    "mkt_return_20d=R1",
+    "mkt_vol_20d=R3",
+    "return_60d=Q5"
    ],
    "stats": {
+    "n_variants_confirmed": 1,
     "n_windows_significant": 3,
-    "oos_coverage": 3244,
-    "win_rate": 0.0536,
-    "lift": 1.991,
-    "mean_return_net": 0.0099
+    "oos_coverage": 1037,
+    "win_rate": 0.0685,
+    "lift": 2.976,
+    "mean_return_net": 0.0255
    }
   },
   {
-   "name": "規則6：atr_ratio=Q5 & close_ma60_ratio=Q5 & mkt_vol_20d=R3",
-   "id": "rule_06",
+   "id": "rule_16",
+   "name": "規則16：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & up_day_ratio=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "mkt_return_20d=R1",
+    "up_day_ratio=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1406,
+    "win_rate": 0.0569,
+    "lift": 2.938,
+    "mean_return_net": 0.0046
+   }
+  },
+  {
+   "id": "rule_17",
+   "name": "規則17：dist_low_60=Q5 & mkt_vol_20d=R3 & return_5d=Q1",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "dist_low_60=Q5",
+    "mkt_vol_20d=R3",
+    "return_5d=Q1"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1421,
+    "win_rate": 0.0556,
+    "lift": 2.87,
+    "mean_return_net": 0.0025
+   }
+  },
+  {
+   "id": "rule_18",
+   "name": "規則18：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3 & return_60d=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "mkt_return_20d=R1",
+    "mkt_vol_20d=R3",
+    "return_60d=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1122,
+    "win_rate": 0.0651,
+    "lift": 2.828,
+    "mean_return_net": 0.024
+   }
+  },
+  {
+   "id": "rule_19",
+   "name": "規則19：atr_ratio=Q5 & mkt_return_20d=R1 & return_5d=Q1 & return_60d=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "mkt_return_20d=R1",
+    "return_5d=Q1",
+    "return_60d=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1060,
+    "win_rate": 0.0547,
+    "lift": 2.825,
+    "mean_return_net": 0.0053
+   }
+  },
+  {
+   "id": "rule_20",
+   "name": "規則20：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3 & return_60d=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_return_20d=R1",
+    "mkt_vol_20d=R3",
+    "return_60d=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1143,
+    "win_rate": 0.0647,
+    "lift": 2.814,
+    "mean_return_net": 0.0219
+   }
+  },
+  {
+   "id": "rule_21",
+   "name": "規則21：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_return_20d=R1",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 4,
+    "oos_coverage": 2475,
+    "win_rate": 0.0634,
+    "lift": 2.757,
+    "mean_return_net": 0.0269
+   }
+  },
+  {
+   "id": "rule_22",
+   "name": "規則22：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & up_day_ratio=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_return_20d=R1",
+    "up_day_ratio=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1426,
+    "win_rate": 0.0533,
+    "lift": 2.752,
+    "mean_return_net": 0.0012
+   }
+  },
+  {
+   "id": "rule_23",
+   "name": "規則23：atr_ratio=Q5 & mkt_return_20d=R1 & up_day_ratio=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "mkt_return_20d=R1",
+    "up_day_ratio=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 2048,
+    "win_rate": 0.0518,
+    "lift": 2.672,
+    "mean_return_net": 0.0048
+   }
+  },
+  {
+   "id": "rule_24",
+   "name": "規則24：atr_ratio=Q5 & close_ma60_ratio=Q5 & tl_false_breaks_20d=Q5",
    "precondition": "trend_r2=Q1",
    "items": [
     "atr_ratio=Q5",
     "close_ma60_ratio=Q5",
-    "mkt_vol_20d=R3"
+    "tl_false_breaks_20d=Q5"
    ],
    "stats": {
+    "n_variants_confirmed": 1,
     "n_windows_significant": 3,
-    "oos_coverage": 2794,
-    "win_rate": 0.0519,
-    "lift": 1.925,
-    "mean_return_net": 0.0146
+    "oos_coverage": 1257,
+    "win_rate": 0.0493,
+    "lift": 2.546,
+    "mean_return_net": 0.004
    }
   },
   {
-   "name": "規則7：atr_ratio=Q5 & dist_low_60=Q5 & mkt_vol_20d=R3",
-   "id": "rule_07",
+   "id": "rule_25",
+   "name": "規則25：atr_ratio=Q5 & dist_low_60=Q5 & trend_slope_z=Q5",
    "precondition": "trend_r2=Q1",
    "items": [
     "atr_ratio=Q5",
     "dist_low_60=Q5",
-    "mkt_vol_20d=R3"
+    "trend_slope_z=Q5"
    ],
    "stats": {
+    "n_variants_confirmed": 1,
     "n_windows_significant": 3,
-    "oos_coverage": 3876,
-    "win_rate": 0.0531,
-    "lift": 1.911,
-    "mean_return_net": 0.0099
+    "oos_coverage": 1052,
+    "win_rate": 0.0485,
+    "lift": 2.503,
+    "mean_return_net": 0.0077
    }
   },
   {
-   "name": "規則8：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
-   "id": "rule_08",
+   "id": "rule_26",
+   "name": "規則26：atr_ratio=Q5 & mkt_vol_20d=R3 & trend_score=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "mkt_vol_20d=R3",
+    "trend_score=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1057,
+    "win_rate": 0.0464,
+    "lift": 2.393,
+    "mean_return_net": 0.0156
+   }
+  },
+  {
+   "id": "rule_27",
+   "name": "規則27：atr_ratio=Q5 & dist_low_60=Q5 & trend_score=Q5",
    "precondition": "trend_r2=Q1",
    "items": [
     "atr_ratio=Q5",
     "dist_low_60=Q5",
-    "mkt_return_20d=R1",
-    "mkt_vol_20d=R3"
+    "trend_score=Q5"
    ],
    "stats": {
-    "n_windows_significant": 2,
-    "oos_coverage": 2439,
-    "win_rate": 0.0558,
-    "lift": 1.906,
-    "mean_return_net": 0.0236
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1003,
+    "win_rate": 0.0449,
+    "lift": 2.316,
+    "mean_return_net": 0.0052
    }
   },
   {
-   "name": "規則9：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
-   "id": "rule_09",
+   "id": "rule_28",
+   "name": "規則28：dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3 & up_day_ratio=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "dist_low_60=Q5",
+    "ma20_ma120_ratio=Q5",
+    "mkt_vol_20d=R3",
+    "up_day_ratio=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1440,
+    "win_rate": 0.0431,
+    "lift": 2.223,
+    "mean_return_net": 0.011
+   }
+  },
+  {
+   "id": "rule_29",
+   "name": "規則29：bb_width_pct=Q4 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "bb_width_pct=Q4",
+    "ma20_ma120_ratio=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1842,
+    "win_rate": 0.0423,
+    "lift": 2.186,
+    "mean_return_net": 0.0018
+   }
+  },
+  {
+   "id": "rule_30",
+   "name": "規則30：close_ma60_ratio=Q5 & mkt_vol_20d=R3 & tl_false_breaks_20d=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "close_ma60_ratio=Q5",
+    "mkt_vol_20d=R3",
+    "tl_false_breaks_20d=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1321,
+    "win_rate": 0.0386,
+    "lift": 1.993,
+    "mean_return_net": 0.0111
+   }
+  },
+  {
+   "id": "rule_31",
+   "name": "規則31：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & up_day_ratio=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "dist_low_60=Q5",
+    "ma20_ma120_ratio=Q5",
+    "up_day_ratio=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1980,
+    "win_rate": 0.0525,
+    "lift": 1.942,
+    "mean_return_net": 0.0014
+   }
+  },
+  {
+   "id": "rule_32",
+   "name": "規則32：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3",
    "precondition": "trend_r2=Q1",
    "items": [
     "atr_ratio=Q5",
     "ma20_ma120_ratio=Q5",
-    "mkt_return_20d=R1",
     "mkt_vol_20d=R3"
    ],
    "stats": {
-    "n_windows_significant": 2,
-    "oos_coverage": 2358,
-    "win_rate": 0.0539,
-    "lift": 1.881,
-    "mean_return_net": 0.0193
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 4121,
+    "win_rate": 0.0488,
+    "lift": 1.803,
+    "mean_return_net": 0.0053
+   }
+  },
+  {
+   "id": "rule_33",
+   "name": "規則33：atr_ratio=Q5 & mkt_vol_20d=R3 & return_60d=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "mkt_vol_20d=R3",
+    "return_60d=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 3480,
+    "win_rate": 0.0483,
+    "lift": 1.785,
+    "mean_return_net": 0.0097
+   }
+  },
+  {
+   "id": "rule_34",
+   "name": "規則34：ma20_ma120_ratio=Q5 & mkt_vol_20d=R3 & up_day_ratio=Q5",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "ma20_ma120_ratio=Q5",
+    "mkt_vol_20d=R3",
+    "up_day_ratio=Q5"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 1940,
+    "win_rate": 0.0407,
+    "lift": 1.77,
+    "mean_return_net": 0.0031
+   }
+  },
+  {
+   "id": "rule_35",
+   "name": "規則35：atr_ratio=Q5 & avg_vol_ratio=Q5 & mkt_vol_20d=R3",
+   "precondition": "trend_r2=Q1",
+   "items": [
+    "atr_ratio=Q5",
+    "avg_vol_ratio=Q5",
+    "mkt_vol_20d=R3"
+   ],
+   "stats": {
+    "n_variants_confirmed": 1,
+    "n_windows_significant": 3,
+    "oos_coverage": 2466,
+    "win_rate": 0.045,
+    "lift": 1.664,
+    "mean_return_net": 0.0181
    }
   }
  ]
