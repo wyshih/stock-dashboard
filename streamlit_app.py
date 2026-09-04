@@ -402,32 +402,41 @@ def page_fpm_rules() -> None:
                f"{filtered['date'].max().date()}，{filtered['stock_id'].nunique():,} 檔股票）")
 
     names = stock_name_map()
+    filtered = filtered.reset_index(drop=True)
     view = pd.DataFrame({
         "日期": filtered["date"].dt.date,
         "代號": filtered["stock_id"],
         "名稱": filtered["stock_id"].map(names).fillna(""),
         "規則": filtered["rule_id"],
-        "20日後超額報酬": filtered["r_end"].map(lambda x: f"{x:+.1%}"),
-        "期間最大回檔": filtered["mdd"].map(lambda x: f"{x:.1%}"),
+        "20日後超額報酬": filtered["r_end"] * 100,
+        "期間最大回檔": filtered["mdd"] * 100,
         "是否起漲": filtered["label"].map({1: "✅", 0: "—"}),
     })
-    event = st.dataframe(
+    st.dataframe(
         view.head(SIGNAL_ROW_LIMIT), use_container_width=True, hide_index=True,
-        on_select="rerun", selection_mode="single-row", key="fpm_rules_table")
-    try:
-        rows = list(event.selection.rows)
-    except Exception:
-        rows = []
-    if rows:
-        hit = filtered.iloc[rows[0]]
-        target = (hit["stock_id"], hit["date"].date())
-        if st.session_state.get("fpm_rules_handled") != target:
-            st.session_state["fpm_rules_handled"] = target
-            st.session_state["stock_jump"] = target
-            # 跳「個股預測走勢」而不是「個股技術面」：後者只看到跳轉日「為止」的圖，
-            # 看不到之後有沒有真的漲；前者預設就是整段測試期，天生看得到後續走勢。
-            st.session_state["page"] = "個股預測走勢"
-            st.rerun()
+        column_config={"20日後超額報酬": st.column_config.NumberColumn(format="%+.2f%%"),
+                       "期間最大回檔": st.column_config.NumberColumn(format="%.2f%%")})
+
+    # 用下拉選單＋按鈕跳轉，不用畫布表格的「點列」互動——後者在 glide-data-grid
+    # 上不夠可靠（2026-09-04 實測：選取事件有時候不會真的觸發 rerun）。
+    st.subheader("跳轉走勢圖")
+    options = list(filtered.head(SIGNAL_ROW_LIMIT).index)
+    pick_idx = st.selectbox(
+        "選一筆看走勢圖（可打字搜尋股票代號，已按日期新到舊排序）", options,
+        format_func=lambda i: (
+            f"{filtered.loc[i,'date'].date()}　{filtered.loc[i,'stock_id']} "
+            f"{names.get(filtered.loc[i,'stock_id'], '')}　{filtered.loc[i,'rule_id']}　"
+            f"20日後{filtered.loc[i,'r_end']:+.1%}"
+        ),
+        key="fpm_rules_pick",
+    )
+    if st.button("跳轉 →", key="fpm_rules_jump"):
+        row = filtered.loc[pick_idx]
+        st.session_state["stock_jump"] = (row["stock_id"], row["date"].date())
+        # 跳「個股預測走勢」而不是「個股技術面」：後者只看到跳轉日「為止」的圖，
+        # 看不到之後有沒有真的漲；前者預設就是整段測試期，天生看得到後續走勢。
+        st.session_state["page"] = "個股預測走勢"
+        st.rerun()
 
     st.download_button(
         "下載這份清單（CSV）", view.to_csv(index=False).encode("utf-8-sig"),
@@ -815,7 +824,15 @@ PAGES = {
 def main() -> None:
     st.sidebar.title("台股預測系統")
     st.sidebar.caption("測試期展示站 · 非即時預測")
-    choice = st.sidebar.radio("頁面", list(PAGES), key="page")
+    # 各頁的「跳轉」都是 st.session_state["page"] = 目標頁 + st.rerun()，但
+    # radio 元件一旦建立，Streamlit 就不准程式再改它綁定的 session_state
+    # （2026-09-04 實測：StreamlitAPIException，型態規則頁的跳轉因此直接死掉，
+    # 訊號清單的跳轉大概率也是同一個病，只是沒人特別點過測到）。
+    # 修法：radio 換綁一個沒人會去改的 key，每次執行開頭先把「跳轉目標」
+    # 同步進去，這時候元件還沒建立，改這個 key 合法。
+    if "page" in st.session_state:
+        st.session_state["page_radio"] = st.session_state.pop("page")
+    choice = st.sidebar.radio("頁面", list(PAGES), key="page_radio")
     manifest = load_manifest()
     if manifest:
         period = manifest.get("period", {})
