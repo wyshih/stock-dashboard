@@ -401,6 +401,26 @@ def page_fpm_rules() -> None:
     st.success(f"共 {len(filtered):,} 筆歷史命中買點（{filtered['date'].min().date()} ~ "
                f"{filtered['date'].max().date()}，{filtered['stock_id'].nunique():,} 檔股票）")
 
+    st.subheader("依買點聚合（同一天同一檔股票，符合了幾條規則）")
+    st.caption("同時符合越多規則的買點，樣本外表現通常越好——這是型態疊加的訊號，"
+               "不是單一規則各自獨立的訊號。")
+    names_for_agg = stock_name_map()
+    agg = filtered.groupby(["date", "stock_id"]).agg(
+        符合規則數=("rule_id", "nunique"),
+        規則清單=("rule_id", lambda s: ", ".join(sorted(s))),
+        r_end=("r_end", "first"),
+        label=("label", "first"),
+    ).reset_index().sort_values(["符合規則數", "date"], ascending=[False, False])
+    agg["名稱"] = agg["stock_id"].map(names_for_agg).fillna("")
+    agg_display = agg.rename(columns={
+        "date": "進場決策日", "stock_id": "股票", "r_end": "20日後超額報酬", "label": "是否起漲",
+    })
+    agg_display["20日後超額報酬"] = agg_display["20日後超額報酬"] * 100
+    st.dataframe(
+        agg_display.head(500), use_container_width=True, hide_index=True,
+        column_config={"20日後超額報酬": st.column_config.NumberColumn(format="%+.2f%%")},
+    )
+
     names = stock_name_map()
     filtered = filtered.reset_index(drop=True)
     view = pd.DataFrame({
