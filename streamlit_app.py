@@ -389,6 +389,15 @@ def page_fpm_rules() -> None:
         st.info("至少選一條規則")
         return
 
+    levels = sorted(hits["validation_level"].unique()) if "validation_level" in hits.columns else []
+    selected_levels = st.multiselect(
+        "驗證等級（可複選，預設全選）", options=levels, default=levels,
+        help="「window顯著性驗證過」：規則在該筆所屬的 walk-forward 視窗有通過統計檢定。"
+             "「直接套規則」：2026 年因為沒有任何規則通過對應視窗的檢定，"
+             "是拿定案的規則直接套用算出來的，嚴謹度較低，不是同一個等級。",
+        key="fpm_level_select",
+    ) if levels else []
+
     stats_df = pd.DataFrame([
         {"規則": rid, "名稱": name_by_id[rid], **stats_by_id[rid]}
         for rid in selected
@@ -397,7 +406,10 @@ def page_fpm_rules() -> None:
                "全市場基準約 2.3%——lift 是勝率相對基準的倍數。")
     st.dataframe(stats_df, use_container_width=True, hide_index=True)
 
-    filtered = hits[hits["rule_id"].isin(selected)].sort_values("date", ascending=False)
+    filtered = hits[hits["rule_id"].isin(selected)]
+    if selected_levels:
+        filtered = filtered[filtered["validation_level"].isin(selected_levels)]
+    filtered = filtered.sort_values("date", ascending=False)
     st.success(f"共 {len(filtered):,} 筆歷史命中買點（{filtered['date'].min().date()} ~ "
                f"{filtered['date'].max().date()}，{filtered['stock_id'].nunique():,} 檔股票）")
 
@@ -431,6 +443,7 @@ def page_fpm_rules() -> None:
         "20日後超額報酬": filtered["r_end"] * 100,
         "期間最大回檔": filtered["mdd"] * 100,
         "是否起漲": filtered["label"].map({1: "✅", 0: "—"}),
+        "驗證等級": filtered["validation_level"],
     })
     st.dataframe(
         view.head(SIGNAL_ROW_LIMIT), use_container_width=True, hide_index=True,
