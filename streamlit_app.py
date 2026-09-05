@@ -108,6 +108,18 @@ def model_name(key: str) -> str:
     return key
 
 
+def exit_desc(key: str) -> str | None:
+    """模型的出場規則說明，讀 manifest 不硬編。
+
+    2026-09-05 起模型不再共用同一套出場：m1 兩個是移動停利／停損，swing 是
+    「分數跌回門檻以下就賣」。舊資料包沒有 `exit` 欄位，回 None（照舊不顯示）。
+    """
+    for entry in load_manifest().get("models", []):
+        if entry["key"] == key:
+            return (entry.get("exit") or {}).get("desc")
+    return None
+
+
 def chosen_threshold(key: str) -> float:
     """門檻讀 manifest，**不硬編**（CLAUDE.md 規則 7）。"""
     for entry in load_manifest().get("models", []):
@@ -187,6 +199,11 @@ def page_picks() -> None:
                    "不是這一天的結果 —— 門檻就是在那條曲線上挑的。")
     else:
         st.caption("這個門檻高過驗證期曲線的範圍，沒有對應的統計。")
+
+    _exit = exit_desc(model_key)
+    if _exit:
+        st.caption(f"**這個模型的出場規則**：{_exit}。"
+                   "各模型的出場方式不同，回測數字要照各自的規則看。")
 
     names = stock_name_map()
     picks = day[day["score"] >= thr].sort_values("score", ascending=False).copy()
