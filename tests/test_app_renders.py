@@ -84,3 +84,46 @@ def test_trade_rules_all_view_lists_every_record():
     text = " ".join(c.value for c in at.caption)
     assert "所有買賣紀錄" in text
     assert "共" in text and "筆" in text
+
+
+needs_swing_trades = pytest.mark.skipif(
+    not (REPO / "public_data" / "swing_trades.parquet").exists(),
+    reason="需要 public_data/swing_trades.parquet（engine 的 make export-public）")
+
+
+@needs_swing_trades
+def test_trade_rules_defaults_to_the_swing_model():
+    """這頁的預設來源是波段模型 —— 使用者要看的是模型給的買賣點。"""
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(APP), default_timeout=180).run()
+    at.session_state["page"] = "每日買賣點"
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+    assert at.selectbox(key="trade_rule_select").value == "swing"
+
+    text = " ".join(m.value for m in at.markdown) + " ".join(c.value for c in at.caption)
+    assert "模型分數" in text
+    assert "不設停損" not in text        # 那是規則來源的說明，模型來源不該出現
+
+
+@needs_swing_trades
+def test_swing_thresholds_default_to_manifest_values_and_are_adjustable():
+    """0.97 / 0.20 當初始值（讀 manifest，不硬編），而且可以調。"""
+    import json
+    from streamlit.testing.v1 import AppTest
+
+    manifest = json.loads((REPO / "public_data" / "manifest.json").read_text())
+    swing = next(m for m in manifest["models"] if m["key"] == "swing")
+
+    at = AppTest.from_file(str(APP), default_timeout=180).run()
+    at.session_state["page"] = "每日買賣點"
+    at.run()
+
+    buy = at.select_slider(key="swing_buy_th")
+    sell = at.select_slider(key="swing_sell_th")
+    assert buy.value == swing["threshold"]
+    assert sell.value == swing["exit"]["sell_threshold"]
+
+    buy.set_value(0.95).run()
+    assert not at.exception, [str(e) for e in at.exception]

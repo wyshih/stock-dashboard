@@ -375,6 +375,17 @@ def load_fpm_rule_stats() -> dict:
 
 
 @st.cache_data(ttl=3600)
+def load_swing_trades() -> pd.DataFrame:
+    """swing 模型的買賣點，engine 端把整個門檻網格都算好了（本站不重算，規則 8）。"""
+    path = DATA_DIR / "swing_trades.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(path)
+    df["stock_id"] = df["stock_id"].astype(str)
+    return df
+
+
+@st.cache_data(ttl=3600)
 def load_trade_rule_hits() -> pd.DataFrame:
     path = DATA_DIR / "trade_rule_hits.parquet"
     if not path.exists():
@@ -417,26 +428,68 @@ def page_trade_rules() -> None:
     stats = load_trade_rule_stats()
     hits = load_trade_rule_hits()
     pending = load_trade_rule_pending()
-    if not stats or hits.empty:
-        st.error("找不到 `public_data/trade_rule_hits.parquet` 或 `trade_rule_stats.json`。"
-                 "請在 engine 端執行 `make export-public`。")
+    swing = load_swing_trades()
+    manifest = load_manifest()
+
+    # 兩種來源：模型（分數過門檻）與規則（條件式）。買賣點的定義不同，畫面共用。
+    sources = {}
+    if not swing.empty:
+        sources["swing"] = "波段模型（swing）"
+    rules = stats.get("rules", []) if stats else []
+    for r in rules:
+        sources[r["id"]] = r["name"]
+    if not sources:
+        st.error("找不到 `public_data/swing_trades.parquet`，也找不到 "
+                 "`trade_rule_hits.parquet`。請在 engine 端執行 `make export-public`。")
         return
 
-    rules = stats.get("rules", [])
-    rule_by_id = {r["id"]: r for r in rules}
-    if not rule_by_id:
-        st.error("規則清單是空的。")
-        return
-    rule_id = st.selectbox("規則", list(rule_by_id),
-                           format_func=lambda rid: rule_by_id[rid]["name"],
-                           key="trade_rule_select")
-    rule = rule_by_id[rule_id]
-    d = hits[hits["rule_id"] == rule_id] if "rule_id" in hits.columns else hits
-    pend = (pending[pending["rule_id"] == rule_id]
-            if not pending.empty and "rule_id" in pending.columns else pending)
-    if "resolved" not in d.columns:
-        d = d.assign(resolved=True)
-    d = d.assign(resolved=d["resolved"].astype(bool))
+    src = st.selectbox("買賣點來源", list(sources), format_func=lambda k: sources[k],
+                       key="trade_rule_select")
+    pend = pd.DataFrame()
+
+    if src == "swing":
+        # 門檻預設吃 manifest（CLAUDE.md 規則 7：不硬編），可調 —— 但只能挑
+        # engine 算好的那些格子，本站不自己回測。
+        _m = next((m for m in manifest.get("models", []) if m.get("key") == "swing"), {})
+        _buy_default = float(_m.get("threshold", 0.97))
+        _sell_default = float((_m.get("exit") or {}).get("sell_threshold", 0.20))
+        buys_grid = sorted(swing["buy_threshold"].unique())
+        sells_grid = sorted(swing["sell_threshold"].unique())
+        c1, c2 = st.columns(2)
+        buy_th = c1.select_slider("買進門檻（分數 >=）", options=buys_grid,
+                                  value=min(buys_grid, key=lambda v: abs(v - _buy_default)),
+                                  key="swing_buy_th")
+        sell_th = c2.select_slider("賣出門檻（分數 <=）", options=sells_grid,
+                                   value=min(sells_grid, key=lambda v: abs(v - _sell_default)),
+                                   key="swing_sell_th")
+        d = swing[(swing["buy_threshold"] == buy_th)
+                  & (swing["sell_threshold"] == sell_th)].copy()
+        if d.empty:
+            st.warning("這組門檻沒有任何買賣點")
+            return
+        d = d.rename(columns={"return": "ret", "sell_reason": "exit_reason"})
+        d["hold"] = (d["sell_date"] - d["buy_date"]).dt.days
+        # data_end＝分數還沒跌破、資料就到頭了，是還沒賣掉，不是真的出場
+        d["resolved"] = d["exit_reason"] != "data_end"
+        rule = {"name": "波段模型（swing）",
+                "entry": [f"模型分數 >= {buy_th:.2f}"],
+                "exit": f"模型分數 <= {sell_th:.2f} → 隔日開盤賣出",
+                "caveats": [
+                    "報酬是**毛報酬**（未扣手續費與證交稅），台股來回成本約 0.585%。",
+                    "`data_end` 代表分數還沒跌破賣出門檻、資料就到頭了 —— 那是還沒賣掉。",
+                ],
+                "stats": {}}
+    else:
+        if hits.empty:
+            st.error("找不到 `public_data/trade_rule_hits.parquet`。")
+            return
+        rule = next(r for r in rules if r["id"] == src)
+        d = hits[hits["rule_id"] == src] if "rule_id" in hits.columns else hits
+        pend = (pending[pending["rule_id"] == src]
+                if not pending.empty and "rule_id" in pending.columns else pending)
+        if "resolved" not in d.columns:
+            d = d.assign(resolved=True)
+        d = d.assign(resolved=d["resolved"].astype(bool))
 
     st.caption(f"買點：{'；'.join(rule.get('entry', []))}　·　賣點：{rule.get('exit', '—')}")
     st.caption("訊號日收盤後決策 → 下一個交易日開盤買進 → 達標日收盤 → 隔日開盤賣出。"
@@ -466,7 +519,9 @@ def page_trade_rules() -> None:
     def _render_summary(expanded: bool = False) -> None:
         """整體績效與已知限制。單日 / 全部兩個檢視共用，避免兩份漂移。"""
         with st.expander("這條規則的整體績效與已知限制", expanded=expanded):
-            for c in stats.get("caveats", []) + rule.get("caveats", []):
+            # stats 的 caveats 是「規則」那份資料的說明，模型來源不適用
+            shared = stats.get("caveats", []) if src != "swing" else []
+            for c in shared + rule.get("caveats", []):
                 st.markdown(f"- {c}")
             rs = rule.get("stats", {})
             c1, c2, c3, c4 = st.columns(4)
