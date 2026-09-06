@@ -54,15 +54,17 @@ needs_trade_rules = pytest.mark.skipif(
 
 
 @needs_trade_rules
-def test_trade_rules_page_renders_with_exit_rule_and_caveats():
-    """買賣點規則頁：出場方式與「不設停損」的風險一定要出現在畫面上。"""
+def test_trade_rules_page_shows_the_three_daily_sections():
+    """每日買賣點頁：選定一天要看得到「買進 / 賣出 / 收盤後選出」三段。"""
     from streamlit.testing.v1 import AppTest
 
     at = AppTest.from_file(str(APP), default_timeout=180).run()
-    at.session_state["page"] = "買賣點規則"
+    at.session_state["page"] = "每日買賣點"
     at.run()
     assert not at.exception, [str(e) for e in at.exception]
 
-    text = " ".join(m.value for m in at.markdown)
-    assert "買點" in text and "賣點" in text
-    assert "停損" in text
+    heads = " ".join(s.value for s in at.subheader)
+    assert "開盤買進" in heads
+    assert "開盤賣出" in heads
+    assert "收盤後選出" in heads
+    assert any(d.label == "看哪一天" for d in at.date_input)

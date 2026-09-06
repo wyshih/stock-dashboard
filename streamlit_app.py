@@ -385,6 +385,17 @@ def load_trade_rule_hits() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=3600)
+def load_trade_rule_pending() -> pd.DataFrame:
+    """最新一批「收盤後選出、隔日開盤才買得到」的訊號（還沒有成交價）。"""
+    path = DATA_DIR / "trade_rule_pending.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(path)
+    df["stock_id"] = df["stock_id"].astype(str)
+    return df
+
+
+@st.cache_data(ttl=3600)
 def load_trade_rule_stats() -> dict:
     path = DATA_DIR / "trade_rule_stats.json"
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
@@ -395,15 +406,17 @@ def _half_year(ts: pd.Timestamp) -> str:
 
 
 def page_trade_rules() -> None:
-    """買賣點規則：成對的買點與賣點，跟「型態規則」頁（訊號日 + 20 天後結果）不同。"""
-    st.title("買賣點規則")
+    """每日買賣點：選一天，看那天要買什麼、賣什麼，點一列跳到走勢圖。
+
+    跟「型態規則」頁不同 —— 那一頁是「訊號日 + 20 天後的結果」，這一頁是成對的
+    買進日/買價與賣出日/賣價。
+    """
+    st.title("每日買賣點")
     st.warning(TEST_BANNER)
-    st.caption("規則由獨立專案 fpm 挖出、在該專案的統一回測器上驗證。"
-               "買點是當日橫斷面條件，賣點是「帳面獲利達標就在隔日開盤賣出」。"
-               "點任一列可以跳到那檔股票的走勢。")
 
     stats = load_trade_rule_stats()
     hits = load_trade_rule_hits()
+    pending = load_trade_rule_pending()
     if not stats or hits.empty:
         st.error("找不到 `public_data/trade_rule_hits.parquet` 或 `trade_rule_stats.json`。"
                  "請在 engine 端執行 `make export-public`。")
@@ -419,67 +432,106 @@ def page_trade_rules() -> None:
                            key="trade_rule_select")
     rule = rule_by_id[rule_id]
     d = hits[hits["rule_id"] == rule_id] if "rule_id" in hits.columns else hits
-
-    st.markdown("**買點**：" + "；".join(rule.get("entry", [])))
-    st.markdown("**賣點**：" + rule.get("exit", "—"))
-    st.caption(f"母體：{rule.get('universe', '—')}　·　"
-               f"每天最多買 {rule.get('max_picks_per_day', '—')} 檔　·　"
-               f"規則挑選期間：{rule.get('selection_window', '—')}")
-
-    with st.expander("⚠️ 這條規則的已知限制（一定要看）", expanded=True):
-        for c in stats.get("caveats", []) + rule.get("caveats", []):
-            st.markdown(f"- {c}")
-
-    st.subheader("全歷史績效（2019~2026，規則作者提供的彙總）")
-    rs = rule.get("stats", {})
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("交易數", f"{rs.get('n_trades', 0):,}")
-    c2.metric("勝率", f"{rs.get('win_rate', 0):.1%}")
-    c3.metric("平均每筆", f"{rs.get('mean_return_net', 0):+.2%}")
-    c4.metric("逐期達標", f"{rs.get('n_periods_win_rate_80', 0)}/{rs.get('n_periods', 0)}",
-              help="每個半年期勝率 >= 80% 的期數。全期平均會被單一時段主導，一定要看逐期。")
-    st.caption(f"中位持有 {rs.get('median_hold', 0):.0f} 個交易日"
-               f"（平均 {rs.get('mean_hold', 0):.0f} 天，被少數抱很久的部位拉高）。"
-               f"最差的半年是 {rs.get('worst_period', '—')}，"
-               f"勝率 {rs.get('worst_period_win_rate', 0):.1%}。")
-
-    st.subheader(f"本站可查證的區間（{d['signal_date'].min():%Y-%m-%d} 起，"
-                 f"共 {len(d):,} 筆）")
-    st.caption("上面的彙總是全歷史，這裡只有 2025-02 之後 —— 公開資料包不放更早的逐筆紀錄。")
-
-    # 勝率只算已結束的交易，但未結束筆數要跟著出去：達標的先結束、沒達標的還開著，
-    # 未結束多的期間勝率天生偏高（近期尤其明顯），不標出來就是誤導。
+    pend = (pending[pending["rule_id"] == rule_id]
+            if not pending.empty and "rule_id" in pending.columns else pending)
     if "resolved" not in d.columns:
         d = d.assign(resolved=True)
-    d = d.assign(期間=d["signal_date"].map(_half_year), resolved=d["resolved"].astype(bool))
-    done = d[d["resolved"]]
-    per = done.groupby("期間").agg(
-        已結束=("ret", "size"), 勝率=("ret", lambda s: (s > 0).mean()),
-        平均報酬=("ret", "mean"), 平均持有=("hold", "mean")).reset_index()
-    per = per.merge(d[~d["resolved"]].groupby("期間").size().rename("未結束"),
-                    on="期間", how="outer")
-    per["未結束"] = per["未結束"].fillna(0).astype(int)
-    per["已結束"] = per["已結束"].fillna(0).astype(int)
-    st.caption("⚠️ 勝率只算已結束的交易。**未結束筆數多的期間勝率天生偏高**，"
-               "因為達標的部位會先結束、沒達標的還開著。")
-    st.dataframe(per.sort_values("期間").style.format(
-        {"勝率": "{:.1%}", "平均報酬": "{:+.2%}", "平均持有": "{:.0f}"}),
-        use_container_width=True, hide_index=True)
+    d = d.assign(resolved=d["resolved"].astype(bool))
 
-    show = d.sort_values("signal_date", ascending=False).head(300)
-    st.caption("`resolved` 為 False 的是還沒賣掉的部位，那一列的報酬是用資料"
-               "最後一天的價格試算，不是真的成交。")
-    event = st.dataframe(
-        show[["signal_date", "stock_id", "buy_date", "buy_price", "sell_date",
-              "sell_price", "ret", "hold", "exit_reason", "resolved"]],
-        use_container_width=True, hide_index=True,
-        on_select="rerun", selection_mode="single-row", key="trade_rule_table")
-    rows = event.selection.rows if event and event.selection else []
-    if rows:
-        picked = show.iloc[rows[0]]
-        st.session_state["stock_id"] = str(picked["stock_id"])
-        st.session_state["page"] = "個股技術面"
-        st.rerun()
+    st.caption(f"買點：{'；'.join(rule.get('entry', []))}　·　賣點：{rule.get('exit', '—')}")
+    st.caption("訊號日收盤後決策 → 下一個交易日開盤買進 → 達標日收盤 → 隔日開盤賣出。"
+               "本站只有 2025-02 之後的逐筆紀錄。")
+
+    days = set(d["buy_date"]) | set(d["sell_date"]) | set(d["signal_date"])
+    if not pend.empty:
+        days |= set(pend["date"])
+    days = sorted(days, reverse=True)
+    pick = st.date_input("看哪一天", value=days[0].date(),
+                         min_value=days[-1].date(), max_value=days[0].date(),
+                         key="trade_rule_day")
+    day = pd.Timestamp(pick)
+
+    names = load_stock_list()
+    name_by_id = (dict(zip(names["stock_id"].astype(str), names["stock_name"]))
+                  if not names.empty else {})
+
+    def _table(df: pd.DataFrame, cols: list[str], key: str) -> None:
+        show = df.copy()
+        show.insert(1, "名稱", show["stock_id"].astype(str).map(name_by_id).fillna(""))
+        event = st.dataframe(show[cols], use_container_width=True, hide_index=True,
+                             on_select="rerun", selection_mode="single-row", key=key)
+        rows = event.selection.rows if event and event.selection else []
+        if rows:
+            st.session_state["stock_id"] = str(df.iloc[rows[0]]["stock_id"])
+            st.session_state["page"] = "個股技術面"
+            st.rerun()
+
+    BUY_COLS = ["stock_id", "名稱", "buy_date", "buy_price", "sell_date",
+                "sell_price", "ret", "hold", "exit_reason", "resolved"]
+    SELL_COLS = ["stock_id", "名稱", "buy_date", "buy_price", "sell_date",
+                 "sell_price", "ret", "hold"]
+
+    buys = d[d["buy_date"] == day].reset_index(drop=True)
+    sells = d[(d["sell_date"] == day) & d["resolved"]].reset_index(drop=True)
+    fired = d[d["signal_date"] == day]
+    waiting = (pend[pend["date"] == day].rename(columns={"date": "signal_date"})
+               if not pend.empty else pd.DataFrame())
+    if not waiting.empty and not fired.empty:
+        waiting = waiting[~waiting["stock_id"].astype(str)
+                          .isin(set(fired["stock_id"].astype(str)))]
+    sigs = pd.concat([x for x in (fired, waiting) if not x.empty],
+                     ignore_index=True) if len(fired) or len(waiting) else pd.DataFrame()
+
+    st.subheader(f"🟢 {pick} 開盤買進（{len(buys)} 檔）")
+    if buys.empty:
+        st.info("這一天沒有要買的。")
+    else:
+        st.caption("訊號是前一個交易日收盤後發出的。`resolved` 為 False 代表這筆還沒賣掉，"
+                   "報酬是用資料最後一天的價格試算。")
+        _table(buys, BUY_COLS, "trade_buy_table")
+
+    st.subheader(f"🔴 {pick} 開盤賣出（{len(sells)} 檔）")
+    if sells.empty:
+        st.info("這一天沒有要賣的。")
+    else:
+        st.caption("前一個交易日收盤已達標，這天開盤出場。")
+        _table(sells, SELL_COLS, "trade_sell_table")
+
+    st.subheader(f"🆕 {pick} 收盤後選出（{len(sigs)} 檔，下一個交易日開盤買）")
+    if sigs.empty:
+        st.info("這一天沒有選到股票。")
+    else:
+        _table(sigs, ["stock_id", "名稱", "signal_date"], "trade_sig_table")
+
+    st.divider()
+    with st.expander("這條規則的整體績效與已知限制", expanded=False):
+        for c in stats.get("caveats", []) + rule.get("caveats", []):
+            st.markdown(f"- {c}")
+        rs = rule.get("stats", {})
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("交易數（全歷史）", f"{rs.get('n_trades', 0):,}")
+        c2.metric("勝率", f"{rs.get('win_rate', 0):.1%}")
+        c3.metric("平均每筆", f"{rs.get('mean_return_net', 0):+.2%}")
+        c4.metric("逐期達標", f"{rs.get('n_periods_win_rate_80', 0)}/{rs.get('n_periods', 0)}",
+                  help="每個半年期勝率 >= 80% 的期數。")
+        st.caption(f"中位持有 {rs.get('median_hold', 0):.0f} 個交易日"
+                   f"（平均 {rs.get('mean_hold', 0):.0f} 天，被少數抱很久的部位拉高）。"
+                   f"最差的半年是 {rs.get('worst_period', '—')}，"
+                   f"勝率 {rs.get('worst_period_win_rate', 0):.1%}。"
+                   "上面是全歷史 2019~2026，本站逐筆紀錄只有 2025-02 之後。")
+
+        done = d[d["resolved"]]
+        per = done.groupby(done["signal_date"].map(_half_year)).agg(
+            已結束=("ret", "size"), 勝率=("ret", lambda x: (x > 0).mean()),
+            平均報酬=("ret", "mean"), 平均持有=("hold", "mean"))
+        per = per.join(d[~d["resolved"]].groupby(
+            d.loc[~d["resolved"], "signal_date"].map(_half_year)).size().rename("未結束"))
+        per["未結束"] = per["未結束"].fillna(0).astype(int)
+        st.caption("⚠️ 勝率只算已結束的交易。**未結束筆數多的期間勝率天生偏高**，"
+                   "因為達標的部位會先結束、沒達標的還開著。")
+        st.dataframe(per.reset_index(names="期間").style.format(
+            {"勝率": "{:.1%}", "平均報酬": "{:+.2%}", "平均持有": "{:.0f}"}),
+            use_container_width=True, hide_index=True)
 
 
 def page_fpm_rules() -> None:
@@ -978,7 +1030,7 @@ PAGES = {
     "個股預測走勢": page_history,
     "個股技術面": page_stock,
     "型態規則": page_fpm_rules,
-    "買賣點規則": page_trade_rules,
+    "每日買賣點": page_trade_rules,
     "關於": page_about,
 }
 
