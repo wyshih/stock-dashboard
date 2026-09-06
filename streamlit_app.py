@@ -446,10 +446,7 @@ def page_trade_rules() -> None:
     if not pend.empty:
         days |= set(pend["date"])
     days = sorted(days, reverse=True)
-    pick = st.date_input("看哪一天", value=days[0].date(),
-                         min_value=days[-1].date(), max_value=days[0].date(),
-                         key="trade_rule_day")
-    day = pd.Timestamp(pick)
+    view = st.radio("檢視方式", ["單日", "全部"], horizontal=True, key="trade_rule_view")
 
     names = load_stock_list()
     name_by_id = (dict(zip(names["stock_id"].astype(str), names["stock_name"]))
@@ -466,10 +463,61 @@ def page_trade_rules() -> None:
             st.session_state["page"] = "個股技術面"
             st.rerun()
 
+    def _render_summary(expanded: bool = False) -> None:
+        """整體績效與已知限制。單日 / 全部兩個檢視共用，避免兩份漂移。"""
+        with st.expander("這條規則的整體績效與已知限制", expanded=expanded):
+            for c in stats.get("caveats", []) + rule.get("caveats", []):
+                st.markdown(f"- {c}")
+            rs = rule.get("stats", {})
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("交易數（全歷史）", f"{rs.get('n_trades', 0):,}")
+            c2.metric("勝率", f"{rs.get('win_rate', 0):.1%}")
+            c3.metric("平均每筆", f"{rs.get('mean_return_net', 0):+.2%}")
+            c4.metric("逐期達標", f"{rs.get('n_periods_win_rate_80', 0)}/{rs.get('n_periods', 0)}",
+                      help="每個半年期勝率 >= 80% 的期數。")
+            st.caption(f"中位持有 {rs.get('median_hold', 0):.0f} 個交易日"
+                       f"（平均 {rs.get('mean_hold', 0):.0f} 天，被少數抱很久的部位拉高）。"
+                       f"最差的半年是 {rs.get('worst_period', '—')}，"
+                       f"勝率 {rs.get('worst_period_win_rate', 0):.1%}。"
+                       "上面是全歷史 2019~2026，本站逐筆紀錄只有 2025-02 之後。")
+
+            done = d[d["resolved"]]
+            per = done.groupby(done["signal_date"].map(_half_year)).agg(
+                已結束=("ret", "size"), 勝率=("ret", lambda x: (x > 0).mean()),
+                平均報酬=("ret", "mean"), 平均持有=("hold", "mean"))
+            per = per.join(d[~d["resolved"]].groupby(
+                d.loc[~d["resolved"], "signal_date"].map(_half_year)).size().rename("未結束"))
+            per["未結束"] = per["未結束"].fillna(0).astype(int)
+            st.caption("⚠️ 勝率只算已結束的交易。**未結束筆數多的期間勝率天生偏高**，"
+                       "因為達標的部位會先結束、沒達標的還開著。")
+            st.dataframe(per.reset_index(names="期間").style.format(
+                {"勝率": "{:.1%}", "平均報酬": "{:+.2%}", "平均持有": "{:.0f}"}),
+                use_container_width=True, hide_index=True)
+
     BUY_COLS = ["stock_id", "名稱", "buy_date", "buy_price", "sell_date",
                 "sell_price", "ret", "hold", "exit_reason", "resolved"]
     SELL_COLS = ["stock_id", "名稱", "buy_date", "buy_price", "sell_date",
                  "sell_price", "ret", "hold"]
+    ALL_COLS = ["stock_id", "名稱", "signal_date", "buy_date", "buy_price",
+                "sell_date", "sell_price", "ret", "hold", "exit_reason", "resolved"]
+
+    if view == "全部":
+        st.caption("整條規則在本站可查證區間的所有買賣紀錄，新的在最前面。"
+                   "`resolved` 為 False 代表還沒賣掉，那一列的報酬是用資料最後一天"
+                   "的價格試算，不是真的成交。")
+        only_open = st.checkbox("只看還沒賣掉的部位", key="trade_rule_only_open")
+        table = d[~d["resolved"]] if only_open else d
+        table = table.sort_values("signal_date", ascending=False).reset_index(drop=True)
+        st.caption(f"共 {len(table):,} 筆")
+        if not table.empty:
+            _table(table, ALL_COLS, "trade_all_table")
+        _render_summary(expanded=True)
+        return
+
+    pick = st.date_input("看哪一天", value=days[0].date(),
+                         min_value=days[-1].date(), max_value=days[0].date(),
+                         key="trade_rule_day")
+    day = pd.Timestamp(pick)
 
     buys = d[d["buy_date"] == day].reset_index(drop=True)
     sells = d[(d["sell_date"] == day) & d["resolved"]].reset_index(drop=True)
@@ -504,34 +552,7 @@ def page_trade_rules() -> None:
         _table(sigs, ["stock_id", "名稱", "signal_date"], "trade_sig_table")
 
     st.divider()
-    with st.expander("這條規則的整體績效與已知限制", expanded=False):
-        for c in stats.get("caveats", []) + rule.get("caveats", []):
-            st.markdown(f"- {c}")
-        rs = rule.get("stats", {})
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("交易數（全歷史）", f"{rs.get('n_trades', 0):,}")
-        c2.metric("勝率", f"{rs.get('win_rate', 0):.1%}")
-        c3.metric("平均每筆", f"{rs.get('mean_return_net', 0):+.2%}")
-        c4.metric("逐期達標", f"{rs.get('n_periods_win_rate_80', 0)}/{rs.get('n_periods', 0)}",
-                  help="每個半年期勝率 >= 80% 的期數。")
-        st.caption(f"中位持有 {rs.get('median_hold', 0):.0f} 個交易日"
-                   f"（平均 {rs.get('mean_hold', 0):.0f} 天，被少數抱很久的部位拉高）。"
-                   f"最差的半年是 {rs.get('worst_period', '—')}，"
-                   f"勝率 {rs.get('worst_period_win_rate', 0):.1%}。"
-                   "上面是全歷史 2019~2026，本站逐筆紀錄只有 2025-02 之後。")
-
-        done = d[d["resolved"]]
-        per = done.groupby(done["signal_date"].map(_half_year)).agg(
-            已結束=("ret", "size"), 勝率=("ret", lambda x: (x > 0).mean()),
-            平均報酬=("ret", "mean"), 平均持有=("hold", "mean"))
-        per = per.join(d[~d["resolved"]].groupby(
-            d.loc[~d["resolved"], "signal_date"].map(_half_year)).size().rename("未結束"))
-        per["未結束"] = per["未結束"].fillna(0).astype(int)
-        st.caption("⚠️ 勝率只算已結束的交易。**未結束筆數多的期間勝率天生偏高**，"
-                   "因為達標的部位會先結束、沒達標的還開著。")
-        st.dataframe(per.reset_index(names="期間").style.format(
-            {"勝率": "{:.1%}", "平均報酬": "{:+.2%}", "平均持有": "{:.0f}"}),
-            use_container_width=True, hide_index=True)
+    _render_summary()
 
 
 def page_fpm_rules() -> None:

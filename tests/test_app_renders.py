@@ -68,3 +68,19 @@ def test_trade_rules_page_shows_the_three_daily_sections():
     assert "開盤賣出" in heads
     assert "收盤後選出" in heads
     assert any(d.label == "看哪一天" for d in at.date_input)
+
+
+@needs_trade_rules
+def test_trade_rules_all_view_lists_every_record():
+    """「全部」檢視要看得到整份買賣紀錄，不是只有單日。"""
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(APP), default_timeout=180).run()
+    at.session_state["page"] = "每日買賣點"
+    at.run()
+    at.radio(key="trade_rule_view").set_value("全部").run()
+    assert not at.exception, [str(e) for e in at.exception]
+
+    text = " ".join(c.value for c in at.caption)
+    assert "所有買賣紀錄" in text
+    assert "共" in text and "筆" in text
