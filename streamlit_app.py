@@ -374,6 +374,114 @@ def load_fpm_rule_stats() -> dict:
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
+@st.cache_data(ttl=3600)
+def load_trade_rule_hits() -> pd.DataFrame:
+    path = DATA_DIR / "trade_rule_hits.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(path)
+    df["stock_id"] = df["stock_id"].astype(str)
+    return df
+
+
+@st.cache_data(ttl=3600)
+def load_trade_rule_stats() -> dict:
+    path = DATA_DIR / "trade_rule_stats.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+def _half_year(ts: pd.Timestamp) -> str:
+    return f"{ts.year}H{1 if ts.month <= 6 else 2}"
+
+
+def page_trade_rules() -> None:
+    """買賣點規則：成對的買點與賣點，跟「型態規則」頁（訊號日 + 20 天後結果）不同。"""
+    st.title("買賣點規則")
+    st.warning(TEST_BANNER)
+    st.caption("規則由獨立專案 fpm 挖出、在該專案的統一回測器上驗證。"
+               "買點是當日橫斷面條件，賣點是「帳面獲利達標就在隔日開盤賣出」。"
+               "點任一列可以跳到那檔股票的走勢。")
+
+    stats = load_trade_rule_stats()
+    hits = load_trade_rule_hits()
+    if not stats or hits.empty:
+        st.error("找不到 `public_data/trade_rule_hits.parquet` 或 `trade_rule_stats.json`。"
+                 "請在 engine 端執行 `make export-public`。")
+        return
+
+    rules = stats.get("rules", [])
+    rule_by_id = {r["id"]: r for r in rules}
+    if not rule_by_id:
+        st.error("規則清單是空的。")
+        return
+    rule_id = st.selectbox("規則", list(rule_by_id),
+                           format_func=lambda rid: rule_by_id[rid]["name"],
+                           key="trade_rule_select")
+    rule = rule_by_id[rule_id]
+    d = hits[hits["rule_id"] == rule_id] if "rule_id" in hits.columns else hits
+
+    st.markdown("**買點**：" + "；".join(rule.get("entry", [])))
+    st.markdown("**賣點**：" + rule.get("exit", "—"))
+    st.caption(f"母體：{rule.get('universe', '—')}　·　"
+               f"每天最多買 {rule.get('max_picks_per_day', '—')} 檔　·　"
+               f"規則挑選期間：{rule.get('selection_window', '—')}")
+
+    with st.expander("⚠️ 這條規則的已知限制（一定要看）", expanded=True):
+        for c in stats.get("caveats", []) + rule.get("caveats", []):
+            st.markdown(f"- {c}")
+
+    st.subheader("全歷史績效（2019~2026，規則作者提供的彙總）")
+    rs = rule.get("stats", {})
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("交易數", f"{rs.get('n_trades', 0):,}")
+    c2.metric("勝率", f"{rs.get('win_rate', 0):.1%}")
+    c3.metric("平均每筆", f"{rs.get('mean_return_net', 0):+.2%}")
+    c4.metric("逐期達標", f"{rs.get('n_periods_win_rate_80', 0)}/{rs.get('n_periods', 0)}",
+              help="每個半年期勝率 >= 80% 的期數。全期平均會被單一時段主導，一定要看逐期。")
+    st.caption(f"中位持有 {rs.get('median_hold', 0):.0f} 個交易日"
+               f"（平均 {rs.get('mean_hold', 0):.0f} 天，被少數抱很久的部位拉高）。"
+               f"最差的半年是 {rs.get('worst_period', '—')}，"
+               f"勝率 {rs.get('worst_period_win_rate', 0):.1%}。")
+
+    st.subheader(f"本站可查證的區間（{d['signal_date'].min():%Y-%m-%d} 起，"
+                 f"共 {len(d):,} 筆）")
+    st.caption("上面的彙總是全歷史，這裡只有 2025-02 之後 —— 公開資料包不放更早的逐筆紀錄。")
+
+    # 勝率只算已結束的交易，但未結束筆數要跟著出去：達標的先結束、沒達標的還開著，
+    # 未結束多的期間勝率天生偏高（近期尤其明顯），不標出來就是誤導。
+    if "resolved" not in d.columns:
+        d = d.assign(resolved=True)
+    d = d.assign(期間=d["signal_date"].map(_half_year), resolved=d["resolved"].astype(bool))
+    done = d[d["resolved"]]
+    per = done.groupby("期間").agg(
+        已結束=("ret", "size"), 勝率=("ret", lambda s: (s > 0).mean()),
+        平均報酬=("ret", "mean"), 平均持有=("hold", "mean")).reset_index()
+    per = per.merge(d[~d["resolved"]].groupby("期間").size().rename("未結束"),
+                    on="期間", how="outer")
+    per["未結束"] = per["未結束"].fillna(0).astype(int)
+    per["已結束"] = per["已結束"].fillna(0).astype(int)
+    st.caption("⚠️ 勝率只算已結束的交易。**未結束筆數多的期間勝率天生偏高**，"
+               "因為達標的部位會先結束、沒達標的還開著。")
+    st.dataframe(per.sort_values("期間").style.format(
+        {"勝率": "{:.1%}", "平均報酬": "{:+.2%}", "平均持有": "{:.0f}"}),
+        use_container_width=True, hide_index=True)
+
+    show = d.sort_values("signal_date", ascending=False).head(300)
+    st.caption("`resolved` 為 False 的是還沒賣掉的部位，那一列的報酬是用資料"
+               "最後一天的價格試算，不是真的成交。")
+    event = st.dataframe(
+        show[["signal_date", "stock_id", "buy_date", "buy_price", "sell_date",
+              "sell_price", "ret", "hold", "exit_reason", "resolved"]],
+        use_container_width=True, hide_index=True,
+        on_select="rerun", selection_mode="single-row", key="trade_rule_table")
+    rows = event.selection.rows if event and event.selection else []
+    if rows:
+        picked = show.iloc[rows[0]]
+        st.session_state["stock_id"] = str(picked["stock_id"])
+        st.session_state["page"] = "個股技術面"
+        st.rerun()
+
+
 def page_fpm_rules() -> None:
     st.title("型態規則")
     st.warning(TEST_BANNER)
@@ -870,6 +978,7 @@ PAGES = {
     "個股預測走勢": page_history,
     "個股技術面": page_stock,
     "型態規則": page_fpm_rules,
+    "買賣點規則": page_trade_rules,
     "關於": page_about,
 }
 

@@ -46,3 +46,23 @@ def test_swing_is_selectable_and_shows_its_own_exit_rule():
     assert not at.exception, [str(e) for e in at.exception]
     blob = " ".join(c.value for c in at.caption)
     assert "分數跌回 0.20 以下" in blob, "沒有顯示 swing 自己的出場規則"
+
+
+needs_trade_rules = pytest.mark.skipif(
+    not (REPO / "public_data" / "trade_rule_hits.parquet").exists(),
+    reason="需要 public_data/trade_rule_hits.parquet（engine 的 make export-public）")
+
+
+@needs_trade_rules
+def test_trade_rules_page_renders_with_exit_rule_and_caveats():
+    """買賣點規則頁：出場方式與「不設停損」的風險一定要出現在畫面上。"""
+    from streamlit.testing.v1 import AppTest
+
+    at = AppTest.from_file(str(APP), default_timeout=180).run()
+    at.session_state["page"] = "買賣點規則"
+    at.run()
+    assert not at.exception, [str(e) for e in at.exception]
+
+    text = " ".join(m.value for m in at.markdown)
+    assert "買點" in text and "賣點" in text
+    assert "停損" in text

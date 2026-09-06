@@ -51,7 +51,7 @@ class TestApp:
         assert block
         pages = re.findall(r'"([^"]+)":', block.group(1))
         assert pages == ["推薦名單", "訊號清單", "個股預測走勢",
-                         "個股技術面", "型態規則", "關於"]
+                         "個股技術面", "型態規則", "買賣點規則", "關於"]
 
     def test_no_hardcoded_thresholds(self):
         """門檻一律讀 manifest.json（CLAUDE.md 規則 7）。"""
@@ -67,4 +67,4 @@ class TestApp:
 
     def test_every_page_states_it_is_backtest_data(self):
         source = (REPO / "streamlit_app.py").read_text(encoding="utf-8")
-        assert source.count("TEST_BANNER") >= 5   # 定義 1 次 + 四頁各用 1 次
+        assert source.count("TEST_BANNER") >= 6   # 定義 1 次 + 五頁各用 1 次
