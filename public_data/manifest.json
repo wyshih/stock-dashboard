@@ -1,21 +1,22 @@
 {
-  "generated_at": "2026-09-05T22:06:55",
+  "generated_at": "2026-09-06T19:07:57",
   "period": {
     "start": "2025-02-01",
-    "end": "2026-07-31",
-    "trading_days": 366
+    "end": "2026-09-03",
+    "trading_days": 390,
+    "note": "官方測試期到 2026-07-31，之後那段是每天新抓進來的資料 —— 模型沒看過，屬於最乾淨的樣本外。"
   },
   "price_period": {
     "start": "2025-02-01",
-    "end": "2026-08-28",
-    "lookahead_trading_days": 20,
+    "end": "2026-09-03",
+    "lookahead_trading_days": 24,
     "lookahead_target": 20,
-    "note": "價格多帶 20 個交易日（目標 20 天），讓期間最後那批訊號也看得到後續走勢；那段沒有分數。"
+    "note": "價格多帶 24 個交易日（目標 20 天），讓期間最後那批訊號也看得到後續走勢；那段沒有分數。"
   },
   "coverage": {
-    "stocks": 1992,
-    "price_rows": 743622,
-    "score_rows": 1989963
+    "stocks": 1993,
+    "price_rows": 751516,
+    "score_rows": 1935257
   },
   "split": "Round 4（train 2020-01~2023-11 / val_es 2024H1 / val_sel 2024H2 / test 2025-02~2025-12 / test2 2026-01~2026-07）",
   "models": [
@@ -29,7 +30,8 @@
         "trail_pct": 0.1,
         "stop_loss": 0.2,
         "desc": "獲利 15% 啟動移動停利、回落 10% 出場；固定停損 20%"
-      }
+      },
+      "start": "2025-02-03"
     },
     {
       "key": "m1_mdd10",
@@ -41,7 +43,8 @@
         "trail_pct": 0.1,
         "stop_loss": 0.2,
         "desc": "獲利 15% 啟動移動停利、回落 10% 出場；固定停損 20%"
-      }
+      },
+      "start": "2025-02-03"
     },
     {
       "key": "swing",
@@ -51,7 +54,8 @@
         "type": "score",
         "sell_threshold": 0.2,
         "desc": "分數跌回 0.20 以下，隔日開盤賣出"
-      }
+      },
+      "start": "2025-07-01"
     }
   ],
   "sigcurve": {
