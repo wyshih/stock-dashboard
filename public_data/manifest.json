@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-06T19:07:57",
+  "generated_at": "2026-09-13T20:28:19",
   "period": {
     "start": "2025-02-01",
     "end": "2026-09-03",
@@ -27,9 +27,9 @@
       "exit": {
         "type": "price",
         "trail_trigger": 0.15,
-        "trail_pct": 0.1,
+        "trail_pct": 0.05,
         "stop_loss": 0.2,
-        "desc": "獲利 15% 啟動移動停利、回落 10% 出場；固定停損 20%"
+        "desc": "獲利 15% 啟動移動停利、回落 5% 出場；固定停損 20%"
       },
       "start": "2025-02-03"
     },
@@ -40,9 +40,9 @@
       "exit": {
         "type": "price",
         "trail_trigger": 0.15,
-        "trail_pct": 0.1,
+        "trail_pct": 0.05,
         "stop_loss": 0.2,
-        "desc": "獲利 15% 啟動移動停利、回落 10% 出場；固定停損 20%"
+        "desc": "獲利 15% 啟動移動停利、回落 5% 出場；固定停損 20%"
       },
       "start": "2025-02-03"
     },
@@ -70,8 +70,10 @@
     "dedup": false,
     "exit_rules": {
       "trail_trigger": 0.15,
-      "trail_pct": 0.1,
-      "stop_loss": 0.2
+      "trail_pct": 0.05,
+      "stop_loss": 0.2,
+      "take_profit": 0.2,
+      "stop_ma": 20
     },
     "matched_top_pct": 0.015
   },

@@ -8,653 +8,108 @@
  ],
  "rules": [
   {
-   "id": "rule_01",
-   "name": "規則1：dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1",
-   "precondition": "trend_r2=Q1",
+   "id": "fpm_01",
+   "name": "電子股：盤中動能+上吊線+融資殘差+KD黃金交叉",
+   "precondition": "sector=電子",
    "items": [
-    "dist_low_60=Q5",
-    "mkt_return_20d=R1",
-    "return_5d=Q1"
+    "imom_score=Q5",
+    "cdlhangingman_present=1.0",
+    "margin_resid=Q5",
+    "kd_golden_10d=1.0"
    ],
    "stats": {
-    "n_variants_confirmed": 4,
-    "n_windows_significant": 3,
-    "oos_coverage": 1393,
-    "win_rate": 0.0625,
-    "lift": 3.224,
-    "mean_return_net": 0.0057
-   }
+    "n_windows_significant": 0,
+    "n_windows_confirmed": 0,
+    "oos_coverage": 315,
+    "win_rate": 0.6476190476190476,
+    "lift": null,
+    "mean_return_net": 0.04135081954593431
+   },
+   "caveats": [
+    "⚠️ 尚未做walk-forward樣本外驗證——這條規則是用貪婪法在2019~2026全部資料混在一起搜出來的，不是先用前段資料挖規則、再拿完全沒看過的後段資料驗證，跟本頁其他規則的驗證等級不同。",
+    "樣本數偏小（315筆），統計不確定性較高，precision數字可能隨資料更新而變動較大。",
+    "confidence(win_rate)指的是：買進後最長等200個交易日內，股票收盤價先碰到+5%（相對買進價）比先碰到-5%更早發生的機率，不是絕對報酬保證。",
+    "✅ 跨組別測試發現此規則其實不限電子股——套到金融股(67.4%)、大型股(63.1%)、中型股(64.2%)precision都跟電子股(66.7%)差不多甚至更高，只有傳產股較弱(55.0%)，小型股無樣本。可能是全市場通用訊號，不是電子股特有的。",
+    "🔧 2026-09-13修正：原本excess_vs_market用的是本專案自算的「等權平均」假大盤，不是真正的加權指數(TAIEX)。換成真正TAIEX重算後，excess從-0.66%變成**-1.26%**（輸更多，不是輸更少）——原因是2024~2026真正TAIEX漲幅遠超過等權平均，用等權平均比較等於在跟一個較弱的對手比。",
+    "⚠️ 已知限制：本規則的統計完全排除成交金額<2,000萬的訊號（買不到的訊號不算數），沒有測試過真正的低流動性/冷門股票，該族群是否有不同規律目前未知。"
+   ]
   },
   {
-   "id": "rule_02",
-   "name": "規則2：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
+   "id": "fpm_02",
+   "name": "金融股：流星型態出現",
+   "precondition": "sector=金融",
    "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "mkt_return_20d=R1",
-    "mkt_vol_20d=R3"
+    "cdlshootingstar_present=1.0"
    ],
    "stats": {
-    "n_variants_confirmed": 4,
-    "n_windows_significant": 3,
-    "oos_coverage": 2439,
-    "win_rate": 0.0558,
-    "lift": 2.879,
-    "mean_return_net": 0.0236
-   }
+    "n_windows_significant": 0,
+    "n_windows_confirmed": 0,
+    "oos_coverage": 354,
+    "win_rate": 0.6892655367231638,
+    "lift": null,
+    "mean_return_net": 0.02863623144484903
+   },
+   "caveats": [
+    "⚠️ 尚未做walk-forward樣本外驗證——這條規則是用貪婪法在2019~2026全部資料混在一起搜出來的，不是先用前段資料挖規則、再拿完全沒看過的後段資料驗證，跟本頁其他規則的驗證等級不同。",
+    "樣本數偏小（354筆），統計不確定性較高，precision數字可能隨資料更新而變動較大。",
+    "confidence(win_rate)指的是：買進後最長等200個交易日內，股票收盤價先碰到+5%（相對買進價）比先碰到-5%更早發生的機率，不是絕對報酬保證。",
+    "🚫 跨組別測試證實：這條規則幾乎沒有選股能力。套到電子股(48.9%)、傳產股(49.3%)、大型股(49.6%)、中型股(49.0%)，precision全部掉回接近該組自己的base rate（沒有型態篩選時的隨便買勝率），代表金融股原本69.5%這個數字幾乎完全是「金融股整體base rate本來就高(64.1%)」造成的假象，流星型態本身幾乎沒有額外的選股貢獻。建議不要當成有效選股規則使用，只當「金融股整體容易觸及+5%」這個背景現象的參考。",
+    "🔧 2026-09-13修正：同上，excess從-3.18%修正為**-3.69%**。",
+    "⚠️ 已知限制：本規則的統計完全排除成交金額<2,000萬的訊號（買不到的訊號不算數），沒有測試過真正的低流動性/冷門股票，該族群是否有不同規律目前未知。"
+   ]
   },
   {
-   "id": "rule_03",
-   "name": "規則3：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
+   "id": "fpm_03",
+   "name": "大型股：盤中動能+跳空並列線+站上季線+站上半年線",
+   "precondition": "cap_tercile=大型(量代理)",
    "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_vol_20d=R3"
+    "imom_score=Q5",
+    "cdlgapsidesidewhite_present=1.0",
+    "mkt_above_ma20=1.0",
+    "mkt_above_ma60=1.0"
    ],
    "stats": {
-    "n_variants_confirmed": 4,
-    "n_windows_significant": 3,
-    "oos_coverage": 3244,
-    "win_rate": 0.0536,
-    "lift": 2.769,
-    "mean_return_net": 0.0099
-   }
+    "n_windows_significant": 0,
+    "n_windows_confirmed": 0,
+    "oos_coverage": 311,
+    "win_rate": 0.6077170418006431,
+    "lift": null,
+    "mean_return_net": 0.02371402971323485
+   },
+   "caveats": [
+    "⚠️ 尚未做walk-forward樣本外驗證——這條規則是用貪婪法在2019~2026全部資料混在一起搜出來的，不是先用前段資料挖規則、再拿完全沒看過的後段資料驗證，跟本頁其他規則的驗證等級不同。",
+    "樣本數偏小（311筆），統計不確定性較高，precision數字可能隨資料更新而變動較大。",
+    "confidence(win_rate)指的是：買進後最長等200個交易日內，股票收盤價先碰到+5%（相對買進價）比先碰到-5%更早發生的機率，不是絕對報酬保證。",
+    "✅ 跨組別測試發現此規則同樣不限大型股——套到金融股(71.4%,樣本小n=28)、傳產股(61.0%)、中型股(60.8%)都有類似或更高的precision，電子股略低(57.9%)但仍高於該組base rate。小型股沒有出現過這個特徵組合(無樣本)。可能也是較泛化的訊號。",
+    "🔧 2026-09-13修正：同上，excess從-3.15%修正為**-4.53%**。",
+    "⚠️ 已知限制：本規則的統計完全排除成交金額<2,000萬的訊號（買不到的訊號不算數），沒有測試過真正的低流動性/冷門股票，該族群是否有不同規律目前未知。"
+   ]
   },
   {
-   "id": "rule_04",
-   "name": "規則4：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
+   "id": "fpm_04",
+   "name": "✅【已做walk-forward樣本外驗證】電子股：盤中動能+本益比+淨值比+站上半年線+KD黃金交叉",
+   "precondition": "sector=電子",
    "items": [
-    "atr_ratio=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_return_20d=R1",
-    "mkt_vol_20d=R3"
+    "imom_score=Q5",
+    "pbr_rank=Q1",
+    "per_rank=Q4",
+    "mkt_above_ma60=1.0",
+    "kd_golden_10d=1.0"
    ],
    "stats": {
-    "n_variants_confirmed": 4,
-    "n_windows_significant": 3,
-    "oos_coverage": 2358,
-    "win_rate": 0.0534,
-    "lift": 2.759,
-    "mean_return_net": 0.0193
-   }
-  },
-  {
-   "id": "rule_05",
-   "name": "規則5：atr_ratio=Q5 & dist_low_60=Q5 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "mkt_vol_20d=R3"
-   ],
-   "stats": {
-    "n_variants_confirmed": 4,
-    "n_windows_significant": 3,
-    "oos_coverage": 3876,
-    "win_rate": 0.0531,
-    "lift": 2.744,
-    "mean_return_net": 0.0099
-   }
-  },
-  {
-   "id": "rule_06",
-   "name": "規則6：atr_ratio=Q5 & close_ma60_ratio=Q5 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "close_ma60_ratio=Q5",
-    "mkt_vol_20d=R3"
-   ],
-   "stats": {
-    "n_variants_confirmed": 4,
-    "n_windows_significant": 3,
-    "oos_coverage": 2794,
-    "win_rate": 0.0519,
-    "lift": 2.679,
-    "mean_return_net": 0.0146
-   }
-  },
-  {
-   "id": "rule_07",
-   "name": "規則7：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "mkt_return_20d=R1",
-    "return_5d=Q1"
-   ],
-   "stats": {
-    "n_variants_confirmed": 3,
-    "n_windows_significant": 3,
-    "oos_coverage": 1139,
-    "win_rate": 0.0694,
-    "lift": 3.581,
-    "mean_return_net": 0.0091
-   }
-  },
-  {
-   "id": "rule_08",
-   "name": "規則8：dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & return_5d=Q1",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "dist_low_60=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_return_20d=R1",
-    "return_5d=Q1"
-   ],
-   "stats": {
-    "n_variants_confirmed": 3,
-    "n_windows_significant": 3,
-    "oos_coverage": 1237,
-    "win_rate": 0.0679,
-    "lift": 3.506,
-    "mean_return_net": 0.0116
-   }
-  },
-  {
-   "id": "rule_09",
-   "name": "規則9：dist_low_60=Q5 & mkt_return_20d=R1 & return_5d=Q1 & return_60d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "dist_low_60=Q5",
-    "mkt_return_20d=R1",
-    "return_5d=Q1",
-    "return_60d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 3,
-    "n_windows_significant": 3,
-    "oos_coverage": 1123,
-    "win_rate": 0.0561,
-    "lift": 2.896,
-    "mean_return_net": 0.0044
-   }
-  },
-  {
-   "id": "rule_10",
-   "name": "規則10：mkt_vol_20d=R3 & std_ratio=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "mkt_vol_20d=R3",
-    "std_ratio=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 3,
-    "n_windows_significant": 3,
-    "oos_coverage": 2076,
-    "win_rate": 0.0549,
-    "lift": 2.835,
-    "mean_return_net": 0.0087
-   }
-  },
-  {
-   "id": "rule_11",
-   "name": "規則11：bb_width_pct=Q5 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "bb_width_pct=Q5",
-    "mkt_vol_20d=R3"
-   ],
-   "stats": {
-    "n_variants_confirmed": 3,
-    "n_windows_significant": 3,
-    "oos_coverage": 2055,
-    "win_rate": 0.054,
-    "lift": 2.789,
-    "mean_return_net": 0.0137
-   }
-  },
-  {
-   "id": "rule_12",
-   "name": "規則12：atr_ratio=Q5 & mkt_vol_20d=R3 & std_ratio=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "mkt_vol_20d=R3",
-    "std_ratio=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 2,
-    "n_windows_significant": 3,
-    "oos_coverage": 1686,
-    "win_rate": 0.0581,
-    "lift": 3.001,
-    "mean_return_net": 0.0098
-   }
-  },
-  {
-   "id": "rule_13",
-   "name": "規則13：atr_ratio=Q5 & dist_low_60=Q5 & mkt_vol_20d=R3 & return_60d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "mkt_vol_20d=R3",
-    "return_60d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 2,
-    "n_windows_significant": 3,
-    "oos_coverage": 3009,
-    "win_rate": 0.0528,
-    "lift": 2.728,
-    "mean_return_net": 0.0111
-   }
-  },
-  {
-   "id": "rule_14",
-   "name": "規則14：atr_ratio=Q5 & bb_width_pct=Q5 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "bb_width_pct=Q5",
-    "mkt_vol_20d=R3"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1662,
-    "win_rate": 0.0578,
-    "lift": 2.982,
-    "mean_return_net": 0.0164
-   }
-  },
-  {
-   "id": "rule_15",
-   "name": "規則15：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3 & return_60d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_return_20d=R1",
-    "mkt_vol_20d=R3",
-    "return_60d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1037,
-    "win_rate": 0.0685,
-    "lift": 2.976,
-    "mean_return_net": 0.0255
-   }
-  },
-  {
-   "id": "rule_16",
-   "name": "規則16：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & up_day_ratio=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "mkt_return_20d=R1",
-    "up_day_ratio=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1406,
-    "win_rate": 0.0569,
-    "lift": 2.938,
-    "mean_return_net": 0.0046
-   }
-  },
-  {
-   "id": "rule_17",
-   "name": "規則17：dist_low_60=Q5 & mkt_vol_20d=R3 & return_5d=Q1",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "dist_low_60=Q5",
-    "mkt_vol_20d=R3",
-    "return_5d=Q1"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1421,
-    "win_rate": 0.0556,
-    "lift": 2.87,
-    "mean_return_net": 0.0025
-   }
-  },
-  {
-   "id": "rule_18",
-   "name": "規則18：atr_ratio=Q5 & dist_low_60=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3 & return_60d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "mkt_return_20d=R1",
-    "mkt_vol_20d=R3",
-    "return_60d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1122,
-    "win_rate": 0.0651,
-    "lift": 2.828,
-    "mean_return_net": 0.024
-   }
-  },
-  {
-   "id": "rule_19",
-   "name": "規則19：atr_ratio=Q5 & mkt_return_20d=R1 & return_5d=Q1 & return_60d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "mkt_return_20d=R1",
-    "return_5d=Q1",
-    "return_60d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1060,
-    "win_rate": 0.0547,
-    "lift": 2.825,
-    "mean_return_net": 0.0053
-   }
-  },
-  {
-   "id": "rule_20",
-   "name": "規則20：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3 & return_60d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_return_20d=R1",
-    "mkt_vol_20d=R3",
-    "return_60d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1143,
-    "win_rate": 0.0647,
-    "lift": 2.814,
-    "mean_return_net": 0.0219
-   }
-  },
-  {
-   "id": "rule_21",
-   "name": "規則21：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_return_20d=R1",
-    "mkt_vol_20d=R3"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 4,
-    "oos_coverage": 2475,
-    "win_rate": 0.0634,
-    "lift": 2.757,
-    "mean_return_net": 0.0269
-   }
-  },
-  {
-   "id": "rule_22",
-   "name": "規則22：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_return_20d=R1 & up_day_ratio=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_return_20d=R1",
-    "up_day_ratio=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1426,
-    "win_rate": 0.0533,
-    "lift": 2.752,
-    "mean_return_net": 0.0012
-   }
-  },
-  {
-   "id": "rule_23",
-   "name": "規則23：atr_ratio=Q5 & mkt_return_20d=R1 & up_day_ratio=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "mkt_return_20d=R1",
-    "up_day_ratio=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 2048,
-    "win_rate": 0.0518,
-    "lift": 2.672,
-    "mean_return_net": 0.0048
-   }
-  },
-  {
-   "id": "rule_24",
-   "name": "規則24：atr_ratio=Q5 & close_ma60_ratio=Q5 & tl_false_breaks_20d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "close_ma60_ratio=Q5",
-    "tl_false_breaks_20d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1257,
-    "win_rate": 0.0493,
-    "lift": 2.546,
-    "mean_return_net": 0.004
-   }
-  },
-  {
-   "id": "rule_25",
-   "name": "規則25：atr_ratio=Q5 & dist_low_60=Q5 & trend_slope_z=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "trend_slope_z=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1052,
-    "win_rate": 0.0485,
-    "lift": 2.503,
-    "mean_return_net": 0.0077
-   }
-  },
-  {
-   "id": "rule_26",
-   "name": "規則26：atr_ratio=Q5 & mkt_vol_20d=R3 & trend_score=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "mkt_vol_20d=R3",
-    "trend_score=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1057,
-    "win_rate": 0.0464,
-    "lift": 2.393,
-    "mean_return_net": 0.0156
-   }
-  },
-  {
-   "id": "rule_27",
-   "name": "規則27：atr_ratio=Q5 & dist_low_60=Q5 & trend_score=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "trend_score=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1003,
-    "win_rate": 0.0449,
-    "lift": 2.316,
-    "mean_return_net": 0.0052
-   }
-  },
-  {
-   "id": "rule_28",
-   "name": "規則28：dist_low_60=Q5 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3 & up_day_ratio=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "dist_low_60=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_vol_20d=R3",
-    "up_day_ratio=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1440,
-    "win_rate": 0.0431,
-    "lift": 2.223,
-    "mean_return_net": 0.011
-   }
-  },
-  {
-   "id": "rule_29",
-   "name": "規則29：bb_width_pct=Q4 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "bb_width_pct=Q4",
-    "ma20_ma120_ratio=Q5",
-    "mkt_vol_20d=R3"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1842,
-    "win_rate": 0.0423,
-    "lift": 2.186,
-    "mean_return_net": 0.0018
-   }
-  },
-  {
-   "id": "rule_30",
-   "name": "規則30：close_ma60_ratio=Q5 & mkt_vol_20d=R3 & tl_false_breaks_20d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "close_ma60_ratio=Q5",
-    "mkt_vol_20d=R3",
-    "tl_false_breaks_20d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1321,
-    "win_rate": 0.0386,
-    "lift": 1.993,
-    "mean_return_net": 0.0111
-   }
-  },
-  {
-   "id": "rule_31",
-   "name": "規則31：atr_ratio=Q5 & dist_low_60=Q5 & ma20_ma120_ratio=Q5 & up_day_ratio=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "dist_low_60=Q5",
-    "ma20_ma120_ratio=Q5",
-    "up_day_ratio=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1980,
-    "win_rate": 0.0525,
-    "lift": 1.942,
-    "mean_return_net": 0.0014
-   }
-  },
-  {
-   "id": "rule_32",
-   "name": "規則32：atr_ratio=Q5 & ma20_ma120_ratio=Q5 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "ma20_ma120_ratio=Q5",
-    "mkt_vol_20d=R3"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 4121,
-    "win_rate": 0.0488,
-    "lift": 1.803,
-    "mean_return_net": 0.0053
-   }
-  },
-  {
-   "id": "rule_33",
-   "name": "規則33：atr_ratio=Q5 & mkt_vol_20d=R3 & return_60d=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "mkt_vol_20d=R3",
-    "return_60d=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 3480,
-    "win_rate": 0.0483,
-    "lift": 1.785,
-    "mean_return_net": 0.0097
-   }
-  },
-  {
-   "id": "rule_34",
-   "name": "規則34：ma20_ma120_ratio=Q5 & mkt_vol_20d=R3 & up_day_ratio=Q5",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "ma20_ma120_ratio=Q5",
-    "mkt_vol_20d=R3",
-    "up_day_ratio=Q5"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 1940,
-    "win_rate": 0.0407,
-    "lift": 1.77,
-    "mean_return_net": 0.0031
-   }
-  },
-  {
-   "id": "rule_35",
-   "name": "規則35：atr_ratio=Q5 & avg_vol_ratio=Q5 & mkt_vol_20d=R3",
-   "precondition": "trend_r2=Q1",
-   "items": [
-    "atr_ratio=Q5",
-    "avg_vol_ratio=Q5",
-    "mkt_vol_20d=R3"
-   ],
-   "stats": {
-    "n_variants_confirmed": 1,
-    "n_windows_significant": 3,
-    "oos_coverage": 2466,
-    "win_rate": 0.045,
-    "lift": 1.664,
-    "mean_return_net": 0.0181
-   }
+    "n_windows_significant": null,
+    "n_windows_confirmed": null,
+    "oos_coverage": 229,
+    "win_rate": 0.8384,
+    "lift": 1.758,
+    "mean_return_net": null
+   },
+   "caveats": [
+    "✅ 這是目前唯一一條做過真正walk-forward驗證的規則：用2019-2024資料找規則，完全不看2025-2026資料；規則固定後，才去2025-2026(從沒看過的資料)驗證，驗證結果precision=83.8%、lift=1.758（n=229），三年(2024/2025/2026)分開看都遠高於基準(47~48%)，沒有崩掉。",
+    "跟fpm_01~fpm_03不同——那三條是在2019-2026全部資料混合搜尋，沒有切訓練/驗證，這條的驗證等級明顯較高。",
+    "樣本數仍偏小(n=229)，且沒測過真正超額報酬(是否贏大盤)跟低流動性股票，跟其他規則有一樣的限制。",
+    "confidence(win_rate)定義：買進後最長等200個交易日內，股票收盤價先碰到+5%比先碰到-5%更早發生的機率。"
+   ]
   }
  ]
 }
