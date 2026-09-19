@@ -110,6 +110,115 @@
     "樣本數仍偏小(n=229)，且沒測過真正超額報酬(是否贏大盤)跟低流動性股票，跟其他規則有一樣的限制。",
     "confidence(win_rate)定義：買進後最長等200個交易日內，股票收盤價先碰到+5%比先碰到-5%更早發生的機率。"
    ]
+  },
+  {
+   "id": "fpm_05",
+   "name": "電子股：盤中動能+本益比中段+淨值比低+營收年增中段",
+   "precondition": "sector=電子",
+   "items": [
+    "imom_score=Q5",
+    "pbr_rank=Q1",
+    "per_rank=Q3",
+    "revenue_yoy=Q2"
+   ],
+   "stats": {
+    "n_windows_significant": null,
+    "n_windows_confirmed": null,
+    "oos_coverage": 129,
+    "win_rate": 0.968992,
+    "lift": 2.008097,
+    "mean_return_net": 0.0109
+   },
+   "caveats": [
+    "用布魯特力窮舉法找到（train 2019-2024／test 2025-2026單一切分），跟fpm_04同一批搜尋出來、同一個核心因子（盤中動能高+淨值比低），差別在第4個輔助條件跟訓練方式（fpm_04是貪婪法逐步加條件，這4條fpm_05~08是窮舉法一次找齊）。",
+    "⚠️ fpm_05~08這4條規則彼此高度重疊，都共用「imom_score=Q5+pbr_rank=Q1+per_rank=Q3」這個核心，只差第4個條件，不是4個獨立訊號——同一支股票很可能同時觸發好幾條。",
+    "win_rate/lift用的是±5%觸價label（先碰+5%還是-5%，最長等200個交易日），跟實際「移動停利15%觸發+回落10%出場、固定停損10%」的停利停損回測是不同評估方式。",
+    "⚠️ 用移動停利/停損回測（trail_trigger=15%、trail_pct=10%、stop_loss=10%、每個訊號都進場）驗證，2025-2026買點148筆，只有10%左右已經真正結算，其餘部位持有中位數約330天都還沒觸發任何出場條件（股價一直在盤整），代表這條規則挑到的是「長期不上不下」的股票，不是會快速大漲的股票。已結算部位平均報酬+6.9%。",
+    "排除2025上半年買點只看2025-07~2026-12後，coverage=111、precision=96.4%、lift=1.95，數字沒有明顯衰退，顯示訊號本身穩定，不是靠特定期間撐出來的。",
+    "20日固定持有的原始報酬(mean_return_net)是正的，但同期excess_vs_market是負的（約-1.5%），代表雖然贏過±5%門檻的機率很高，20天內漲幅不一定跑得贏大盤同期漲幅。",
+    "樣本數129筆偏小，統計不確定性較高。"
+   ]
+  },
+  {
+   "id": "fpm_06",
+   "name": "電子股：盤中動能+站上半年線+本益比中段+淨值比低",
+   "precondition": "sector=電子",
+   "items": [
+    "imom_score=Q5",
+    "mkt_above_ma60=1.0",
+    "pbr_rank=Q1",
+    "per_rank=Q3"
+   ],
+   "stats": {
+    "n_windows_significant": null,
+    "n_windows_confirmed": null,
+    "oos_coverage": 184,
+    "win_rate": 0.929348,
+    "lift": 1.925939,
+    "mean_return_net": 0.016
+   },
+   "caveats": [
+    "用布魯特力窮舉法找到（train 2019-2024／test 2025-2026單一切分），核心跟fpm_05/07/08共用，見fpm_05的重疊說明。",
+    "win_rate/lift用的是±5%觸價label，跟實際停利停損回測是不同評估方式。",
+    "⚠️ 移動停利/停損回測：2025-2026買點209筆，76%部位還在持有中（中位數持有約276天，還沒觸發任何出場），已結算部位平均報酬+5.6%。",
+    "排除2025上半年後，coverage=162、precision=94.4%、lift=1.91，數字穩定。",
+    "excess_vs_market約-0.9%（20日固定持有口徑）。",
+    "樣本數184筆偏小，統計不確定性較高。"
+   ]
+  },
+  {
+   "id": "fpm_07",
+   "name": "電子股：盤中動能+5日KD黃金交叉+本益比中段+淨值比低",
+   "precondition": "sector=電子",
+   "items": [
+    "imom_score=Q5",
+    "kd_golden_5d=1.0",
+    "pbr_rank=Q1",
+    "per_rank=Q3"
+   ],
+   "stats": {
+    "n_windows_significant": null,
+    "n_windows_confirmed": null,
+    "oos_coverage": 114,
+    "win_rate": 0.947368,
+    "lift": 1.963284,
+    "mean_return_net": 0.0178
+   },
+   "caveats": [
+    "用布魯特力窮舉法找到（train 2019-2024／test 2025-2026單一切分），核心跟fpm_05/06/08共用，見fpm_05的重疊說明。",
+    "win_rate/lift用的是±5%觸價label，跟實際停利停損回測是不同評估方式。",
+    "⚠️ 移動停利/停損回測：2025-2026買點129筆，72%部位還在持有中（中位數持有約336天，還沒觸發任何出場），已結算部位平均報酬+4.8%。",
+    "排除2025上半年後，coverage=91（已低於一般採用的100筆門檻）、precision=96.7%、lift=1.95，precision沒有衰退但樣本數開始偏薄。",
+    "excess_vs_market約-1.4%（20日固定持有口徑）。",
+    "樣本數114筆偏小，統計不確定性較高，是fpm_05~08裡樣本數最小的一條。"
+   ]
+  },
+  {
+   "id": "fpm_08",
+   "name": "電子股：盤中動能+10日KD黃金交叉+本益比中段+淨值比低",
+   "precondition": "sector=電子",
+   "items": [
+    "imom_score=Q5",
+    "kd_golden_10d=1.0",
+    "pbr_rank=Q1",
+    "per_rank=Q3"
+   ],
+   "stats": {
+    "n_windows_significant": null,
+    "n_windows_confirmed": null,
+    "oos_coverage": 179,
+    "win_rate": 0.899441,
+    "lift": 1.863962,
+    "mean_return_net": 0.0173
+   },
+   "caveats": [
+    "用布魯特力窮舉法找到（train 2019-2024／test 2025-2026單一切分），核心跟fpm_05/06/07共用，見fpm_05的重疊說明。",
+    "win_rate/lift用的是±5%觸價label，跟實際停利停損回測是不同評估方式。",
+    "⚠️ 移動停利/停損回測：2025-2026買點204筆，70%部位還在持有中（中位數持有約293天，還沒觸發任何出場），已結算部位平均報酬+4.6%，是fpm_05~08裡最弱的一條。",
+    "排除2025上半年後，coverage=145、precision=92.4%、lift=1.86，數字穩定。",
+    "excess_vs_market約-1.4%（20日固定持有口徑）。",
+    "樣本數179筆偏小，統計不確定性較高。"
+   ]
   }
  ]
 }
