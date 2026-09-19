@@ -110,9 +110,15 @@ class TestPublicDataScope:
             pytest.skip("public_data 還沒產生")
         checked = []
         for path in paths:
-            if "date" not in pd.read_parquet(path).columns:
+            df = pd.read_parquet(path)
+            if "date" not in df.columns:
                 continue
-            dates = pd.to_datetime(pd.read_parquet(path, columns=["date"])["date"])
+            if df.empty:
+                # 合法的空狀態（例如 fpm 規則全部下架時 fpm_rule_hits 會是 0 列）
+                # 不含任何資料，自然不可能違反期間下限，不用進下面的 assert。
+                checked.append(path.name)
+                continue
+            dates = pd.to_datetime(df["date"])
             assert dates.min() >= pd.Timestamp("2025-02-01"), (
                 f"{path.name} 含有 2025-02-01 之前的資料（最早 {dates.min().date()}）")
             checked.append(path.name)
