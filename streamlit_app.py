@@ -1083,6 +1083,24 @@ def page_strategy_lab() -> None:
     if summary.get("n_resolved", 0) < 30:
         st.caption("⚠️ 樣本數低於 30 筆，統計結果僅供參考，不足以下結論。")
 
+    split = summary.get("consensus_vs_individual", {})
+    if split:
+        st.subheader("組合推薦 vs 個別推薦")
+        st.caption("組合推薦＝同一天同一檔也被 m1_base_up20 選中；個別推薦＝只有本模型選中。"
+                   "實測兩者表現差很多，值得分開看。")
+        cc1, cc2 = st.columns(2)
+        cons, indiv = split.get("consensus", {}), split.get("individual", {})
+        with cc1:
+            st.markdown("**🤝 組合推薦**")
+            st.metric("平均報酬", f"{cons.get('avg_return', 0):+.2%}" if cons.get("avg_return") is not None else "N/A",
+                      help=f"n={cons.get('n', 0)}")
+            st.metric("勝率", f"{cons.get('win_rate', 0):.1%}" if cons.get("win_rate") is not None else "N/A")
+        with cc2:
+            st.markdown("**🔹 個別推薦**")
+            st.metric("平均報酬", f"{indiv.get('avg_return', 0):+.2%}" if indiv.get("avg_return") is not None else "N/A",
+                      help=f"n={indiv.get('n', 0)}")
+            st.metric("勝率", f"{indiv.get('win_rate', 0):.1%}" if indiv.get("win_rate") is not None else "N/A")
+
     exit_rule = summary.get("exit_rule", {})
     st.subheader("出場規則")
     st.json(exit_rule, expanded=False)
@@ -1093,20 +1111,31 @@ def page_strategy_lab() -> None:
 
     st.divider()
     st.subheader("逐筆訊號")
+    type_pick = st.radio("推薦類型", ["全部", "🤝 組合推薦", "🔹 個別推薦"],
+                         horizontal=True, key="sl_public_type")
+    view = sig
+    if "is_m1_consensus" in sig.columns:
+        if type_pick == "🤝 組合推薦":
+            view = sig[sig["is_m1_consensus"]]
+        elif type_pick == "🔹 個別推薦":
+            view = sig[~sig["is_m1_consensus"]]
+
     listing = load_stock_list()
-    show = sig.copy()
+    show = view.copy()
     if not listing.empty and "stock_name" not in show.columns:
         cols = [c for c in ["stock_id", "stock_name", "industry"] if c in listing.columns]
         show = show.merge(listing[cols], on="stock_id", how="left")
     show["日期"] = show["date"].dt.date
     show["報酬"] = show["fwd_return"].map(lambda x: f"{x:+.2%}" if pd.notna(x) else "未結束")
     show["組合分數"] = show["ensemble_pct"].map("{:.2%}".format)
+    if "is_m1_consensus" in show.columns:
+        show["推薦類型"] = show["is_m1_consensus"].map({True: "🤝 組合", False: "🔹 個別"})
     rename = {"stock_id": "代號", "stock_name": "名稱", "industry": "產業",
               "entry_price": "進場價", "exit_price": "出場價",
               "exit_reason": "出場原因", "exit_day_offset": "持有天數"}
     show = show.rename(columns=rename)
     cols = ["日期", "代號", "名稱", "產業", "進場價", "出場價", "出場原因",
-            "持有天數", "報酬", "組合分數"]
+            "持有天數", "報酬", "組合分數", "推薦類型"]
     st.dataframe(show[[c for c in cols if c in show.columns]]
                  .sort_values("日期", ascending=False),
                  use_container_width=True, hide_index=True)
