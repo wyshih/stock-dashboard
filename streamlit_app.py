@@ -11,7 +11,8 @@
 - 圖表上的指標（MA / 布林 / VWAP / 量能）由 `price_test.parquet` 現算，
   那些只需要 OHLCV。
 
-五頁：推薦名單 / 訊號清單 / 個股預測走勢 / 個股技術面 / 關於。
+頁面：推薦名單 / 訊號清單 / 個股預測走勢 / 個股技術面 / 型態規則 / 每日買賣點 /
+策略買點(strategy_lab) / 關於。
 """
 
 from __future__ import annotations
@@ -41,6 +42,27 @@ TEST_BANNER = ("📌 本站顯示的是模型**測試期（2025-02 ~ 2026-07）*
 @st.cache_data(ttl=3600)
 def load_manifest() -> dict:
     path = DATA_DIR / "manifest.json"
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+
+
+@st.cache_data(ttl=3600)
+def load_strategy_lab_signals() -> pd.DataFrame:
+    """strategy_lab（獨立實驗沙盒，跟 m1/swing 不同模型）的測試期歷史訊號。
+
+    來源：strategy_lab/export_public_signals.py，只含 segment=="test"
+    （2025-08-01 之後）的訊號，符合本站「不早於2025-02-01」的安全規則。
+    """
+    path = DATA_DIR / "strategy_lab_signals.parquet"
+    if not path.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(path)
+    df["date"] = pd.to_datetime(df["date"])
+    return df
+
+
+@st.cache_data(ttl=3600)
+def load_strategy_lab_summary() -> dict:
+    path = DATA_DIR / "strategy_lab_summary.json"
     return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
 
 
@@ -1034,6 +1056,65 @@ def page_stock() -> None:
                    "低於 30 筆樣本的一律不給結論。")
 
 
+def page_strategy_lab() -> None:
+    st.title("策略買點（strategy_lab 測試資料回顧）")
+    st.warning(TEST_BANNER)
+    st.caption("這是另一套獨立的實驗模型（組合 LightGBM分類 + Random Forest分類 + "
+               "LightGBM迴歸），出場規則跟上面 m1/swing 都不同，見下方「方法」。")
+
+    summary = load_strategy_lab_summary()
+    sig = load_strategy_lab_signals()
+    if not summary or sig.empty:
+        st.error("找不到 `public_data/strategy_lab_signals.parquet`。"
+                 "請先在 strategy_lab/ 執行 `python export_public_signals.py`。")
+        return
+
+    st.markdown(f"**方法**：{summary.get('method', '')}")
+    period = summary.get("period", {})
+    st.caption(f"資料期間：{period.get('start')} ~ {period.get('end')}")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("訊號數", f"{summary.get('n_signals', 0):,}")
+    c2.metric("已結束交易", f"{summary.get('n_resolved', 0):,}")
+    avg = summary.get("avg_return")
+    win = summary.get("win_rate")
+    c3.metric("平均報酬", f"{avg:+.2%}" if avg is not None else "N/A")
+    c4.metric("勝率", f"{win:.1%}" if win is not None else "N/A")
+    if summary.get("n_resolved", 0) < 30:
+        st.caption("⚠️ 樣本數低於 30 筆，統計結果僅供參考，不足以下結論。")
+
+    exit_rule = summary.get("exit_rule", {})
+    st.subheader("出場規則")
+    st.json(exit_rule, expanded=False)
+
+    st.subheader("⚠️ 已知限制")
+    for c in summary.get("caveats", []):
+        st.markdown(f"- {c}")
+
+    st.divider()
+    st.subheader("逐筆訊號")
+    listing = load_stock_list()
+    show = sig.copy()
+    if not listing.empty and "stock_name" not in show.columns:
+        cols = [c for c in ["stock_id", "stock_name", "industry"] if c in listing.columns]
+        show = show.merge(listing[cols], on="stock_id", how="left")
+    show["日期"] = show["date"].dt.date
+    show["報酬"] = show["fwd_return"].map(lambda x: f"{x:+.2%}" if pd.notna(x) else "未結束")
+    show["組合分數"] = show["ensemble_pct"].map("{:.2%}".format)
+    rename = {"stock_id": "代號", "stock_name": "名稱", "industry": "產業",
+              "entry_price": "進場價", "exit_price": "出場價",
+              "exit_reason": "出場原因", "exit_day_offset": "持有天數"}
+    show = show.rename(columns=rename)
+    cols = ["日期", "代號", "名稱", "產業", "進場價", "出場價", "出場原因",
+            "持有天數", "報酬", "組合分數"]
+    st.dataframe(show[[c for c in cols if c in show.columns]]
+                 .sort_values("日期", ascending=False),
+                 use_container_width=True, hide_index=True)
+    st.caption("出場原因：trail_stop=移動停利、stop_loss=停損、timeout=到期收盤出場、"
+               "未結束=資料尾端還沒走完最長持有期。")
+    st.error(summary.get("disclaimer", "本頁不構成投資建議。"))
+
+
 def page_about() -> None:
     st.title("關於這個站")
     manifest = load_manifest()
@@ -1107,6 +1188,7 @@ PAGES = {
     "個股技術面": page_stock,
     "型態規則": page_fpm_rules,
     "每日買賣點": page_trade_rules,
+    "策略買點(strategy_lab)": page_strategy_lab,
     "關於": page_about,
 }
 
