@@ -1,23 +1,23 @@
 {
-  "generated_at": "2026-09-19T23:55:22.930957",
+  "generated_at": "2026-09-28T23:10:04.539107",
   "period": {
-    "start": "2026-03-05",
+    "start": "2026-03-04",
     "end": "2026-07-31"
   },
-  "n_signals": 86,
-  "n_resolved": 80,
-  "avg_return": 0.10064533872127028,
-  "median_return": 0.1111560903942729,
-  "win_rate": 0.6875,
+  "n_signals": 85,
+  "n_resolved": 79,
+  "avg_return": 0.10779797988742713,
+  "median_return": 0.1350071428571428,
+  "win_rate": 0.7088607594936709,
   "consensus_vs_individual": {
     "consensus": {
-      "n": 33,
-      "avg_return": 0.17946163280929908,
-      "win_rate": 0.9393939393939394
+      "n": 32,
+      "avg_return": 0.19958272487849965,
+      "win_rate": 1.0
     },
     "individual": {
       "n": 47,
-      "avg_return": 0.045306238616909654,
+      "avg_return": 0.04530623861690967,
       "win_rate": 0.5106382978723404
     }
   },
