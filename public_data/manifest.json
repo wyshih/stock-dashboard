@@ -1,22 +1,22 @@
 {
-  "generated_at": "2026-10-15T21:13:34",
+  "generated_at": "2026-10-26T22:26:14",
   "period": {
     "start": "2025-02-01",
-    "end": "2026-10-15",
-    "trading_days": 417,
+    "end": "2026-10-22",
+    "trading_days": 422,
     "note": "官方測試期到 2026-07-31，之後那段是每天新抓進來的資料 —— 模型沒看過，屬於最乾淨的樣本外。"
   },
   "price_period": {
     "start": "2025-02-01",
-    "end": "2026-10-15",
-    "lookahead_trading_days": 51,
+    "end": "2026-10-22",
+    "lookahead_trading_days": 56,
     "lookahead_target": 20,
-    "note": "價格多帶 51 個交易日（目標 20 天），讓期間最後那批訊號也看得到後續走勢；那段沒有分數。"
+    "note": "價格多帶 56 個交易日（目標 20 天），讓期間最後那批訊號也看得到後續走勢；那段沒有分數。"
   },
   "coverage": {
-    "stocks": 1999,
-    "price_rows": 804825,
-    "score_rows": 2088518
+    "stocks": 2001,
+    "price_rows": 814718,
+    "score_rows": 2116955
   },
   "split": "Round 4（train 2020-01~2023-11 / val_es 2024H1 / val_sel 2024H2 / test 2025-02~2025-12 / test2 2026-01~2026-07）",
   "models": [
